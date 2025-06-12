@@ -307,6 +307,7 @@ const AgentDetails = () => {
   const [secretValue, setSecretValue] = useState("");
   const [generatingSecret, setGeneratingSecret] = useState(false);
   const [updatingSecret, setUpdatingSecret] = useState(false);
+  const [dynamicVariablePlaceholders, setDynamicVariablePlaceholders] = useState<{[key: string]: string}>({});
 
 
   // Fetch agent details
@@ -388,6 +389,14 @@ const AgentDetails = () => {
       setEditedForm(initialForm);
       setConversationInitiationMode(initialForm.first_message === "" ? "user" : "bot");
       setAsrKeywordsInput(initialForm.asr?.keywords?.join(", ") || "");
+
+      // Initialize dynamic variable placeholders
+      const dynamicVars = extractDynamicVariables(initialForm.first_message);
+      const placeholders: {[key: string]: string} = {};
+      dynamicVars.forEach(varName => {
+        placeholders[varName] = '';
+      });
+      setDynamicVariablePlaceholders(placeholders);
 
       // Reset secret fields
       setSecretName("");
@@ -506,6 +515,11 @@ const AgentDetails = () => {
                 },
                 first_message: conversationInitiationMode === "user" ? "" : editedForm.first_message,
                 language: editedForm.language,
+                ...(Object.keys(dynamicVariablePlaceholders).length > 0 && {
+                  dynamic_variables: {
+                    dynamic_variable_placeholders: dynamicVariablePlaceholders
+                  }
+                })
               },
               tts: {
                 voice_id: editedForm.voice_id,
@@ -586,6 +600,17 @@ const AgentDetails = () => {
     setShowLanguageDropdown(false);
   };
 
+  // Extract dynamic variables from first message
+  const extractDynamicVariables = (message: string): string[] => {
+    const regex = /\{\{(\w+)\}\}/g;
+    const matches = [];
+    let match;
+    while ((match = regex.exec(message)) !== null) {
+      matches.push(match[1]);
+    }
+    return [...new Set(matches)]; // Remove duplicates
+  };
+
   // Utility for updating editedForm and marking unsaved changes
   const handleChange = (
     field: keyof EditForm,
@@ -593,6 +618,28 @@ const AgentDetails = () => {
   ) => {
     setEditedForm((prev) => ({ ...prev, [field]: value }));
     setHasChanges(true);
+
+    // If updating first_message, extract dynamic variables
+    if (field === 'first_message' && typeof value === 'string') {
+      const dynamicVars = extractDynamicVariables(value);
+      const newPlaceholders = { ...dynamicVariablePlaceholders };
+      
+      // Add new variables
+      dynamicVars.forEach(varName => {
+        if (!newPlaceholders[varName]) {
+          newPlaceholders[varName] = '';
+        }
+      });
+      
+      // Remove variables that are no longer in the message
+      Object.keys(newPlaceholders).forEach(varName => {
+        if (!dynamicVars.includes(varName)) {
+          delete newPlaceholders[varName];
+        }
+      });
+      
+      setDynamicVariablePlaceholders(newPlaceholders);
+    }
   };
 
   // Create a new tool
@@ -1834,6 +1881,43 @@ const AgentDetails = () => {
                     <p className="text-sm text-gray-500 dark:text-gray-400">
                       Choose a predefined opening message or create a custom one for your agent.
                     </p>
+
+                    {/* Dynamic Variable Placeholders */}
+                    {Object.keys(dynamicVariablePlaceholders).length > 0 && (
+                      <div className="mt-6 space-y-4">
+                        <div className="flex items-center space-x-2">
+                          <Database className="w-4 h-4 text-primary dark:text-primary-400" />
+                          <h4 className="text-sm font-medium text-gray-900 dark:text-white">
+                            Dynamic Variable Placeholders
+                          </h4>
+                        </div>
+                        <div className="pl-4 border-l-2 border-primary/20 dark:border-primary/30 space-y-3">
+                          <p className="text-sm text-gray-500 dark:text-gray-400">
+                            Define values for the dynamic variables found in your first message.
+                          </p>
+                          {Object.keys(dynamicVariablePlaceholders).map((varName) => (
+                            <div key={varName} className="space-y-2">
+                              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                {varName} <span className="text-gray-500 dark:text-gray-400 font-normal">(from {`{{${varName}}}`})</span>
+                              </label>
+                              <input
+                                type="text"
+                                value={dynamicVariablePlaceholders[varName]}
+                                onChange={(e) => {
+                                  setDynamicVariablePlaceholders(prev => ({
+                                    ...prev,
+                                    [varName]: e.target.value
+                                  }));
+                                  setHasChanges(true);
+                                }}
+                                className="input text-sm"
+                                placeholder={`Enter value for ${varName}`}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
