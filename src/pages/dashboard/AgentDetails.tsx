@@ -388,7 +388,7 @@ const AgentDetails = () => {
       setEditedForm(initialForm);
       setConversationInitiationMode(initialForm.first_message === "" ? "user" : "bot");
       setAsrKeywordsInput(initialForm.asr?.keywords?.join(", ") || "");
-      
+
       // Reset secret fields
       setSecretName("");
       setSecretValue("");
@@ -452,12 +452,35 @@ const AgentDetails = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, agentId]);
 
+  // Validate data collection variables
+  const validateDataCollectionVariables = () => {
+    const dataCollection = editedForm.platform_settings?.data_collection || {};
+    for (const [varName, varConfig] of Object.entries(dataCollection)) {
+      if (varConfig.description !== undefined) {
+        if (!varConfig.description || varConfig.description.trim() === '') {
+          throw new Error(`Description is required for variable "${varName}"`);
+        }
+      } else if (varConfig.constant_value !== undefined) {
+        if (!varConfig.constant_value || varConfig.constant_value.trim() === '') {
+          throw new Error(`Constant value is required for variable "${varName}"`);
+        }
+      } else if (varConfig.dynamic_variable !== undefined) {
+        if (!varConfig.dynamic_variable || varConfig.dynamic_variable.trim() === '') {
+          throw new Error(`Dynamic variable is required for variable "${varName}"`);
+        }
+      }
+    }
+  };
+
   // Save changes to backend
   const handleSave = async () => {
     if (!user || !agentId) return;
     try {
       setSaving(true);
       setError("");
+
+      // Validate data collection variables before saving
+      validateDataCollectionVariables();
 
       const response = await fetch(
         `${BACKEND_URL}/agents/${user.uid}/${agentId}`,
@@ -655,7 +678,7 @@ const AgentDetails = () => {
       }
 
       const data = await response.json();
-      
+
       // Update the custom_llm configuration with the received secret_id
       handleChange("custom_llm", {
         ...editedForm.custom_llm,
@@ -667,7 +690,7 @@ const AgentDetails = () => {
       // Clear the input fields since secret is now generated
       setSecretName("");
       setSecretValue("");
-      
+
     } catch (err) {
       console.error("Error generating secret:", err);
       setError(err instanceof Error ? err.message : "Failed to generate secret. Please try again.");
@@ -717,7 +740,7 @@ const AgentDetails = () => {
       }
 
       const data = await response.json();
-      
+
       // Update the custom_llm configuration with the updated secret_id
       handleChange("custom_llm", {
         ...editedForm.custom_llm,
@@ -730,7 +753,7 @@ const AgentDetails = () => {
       setSecretName("");
       setSecretValue("");
       setUpdatingSecret(false);
-      
+
     } catch (err) {
       console.error("Error updating secret:", err);
       setError(err instanceof Error ? err.message : "Failed to update secret. Please try again.");
@@ -1005,7 +1028,7 @@ const AgentDetails = () => {
                       <label className="block text-sm font-medium text-gray-900 dark:text-white">
                         API Key Secret <span className="text-red-500">*</span>
                       </label>
-                      
+
                       {/* Show input fields only when no secret ID exists or when updating */}
                       {(!editedForm.custom_llm?.api_key?.secret_id || updatingSecret) && (
                         <>
@@ -1897,7 +1920,7 @@ const AgentDetails = () => {
                               ...prev,
                               platform_settings: {
                                 ...prev.platform_settings,
-                                data_collection: newDatacollection
+                                data_collection: newDataCollection
                               }
                             }));
                             setEditingVarName(null);

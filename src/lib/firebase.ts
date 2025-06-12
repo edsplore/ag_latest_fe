@@ -3,13 +3,13 @@ import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyCwxtNAUJgw2QsKbKpkceRz7usb4Y4yIVY",
-  authDomain: "xpress-voice.firebaseapp.com",
-  projectId: "xpress-voice",
-  storageBucket: "xpress-voice.firebasestorage.app",
-  messagingSenderId: "206497091675",
-  appId: "1:206497091675:web:8d32cfce3cbd772f86ef7e",
-  measurementId: "G-VHEEE3KFPT",
+  apiKey: "AIzaSyDGOT76ox2Nv7XYy2Rp-3PC4VSHuHJHMo0",
+  authDomain: "xpress-voice-236.firebaseapp.com",
+  projectId: "xpress-voice-236",
+  storageBucket: "xpress-voice-236.firebasestorage.app",
+  messagingSenderId: "308421673474",
+  appId: "1:308421673474:web:4cb53dd9c2b9f650409d1b",
+  measurementId: "G-LZLZXJ3RKJ"
 };
 
 const app = initializeApp(firebaseConfig);

@@ -55,22 +55,61 @@ export const DataCollectionVariable: React.FC<Props> = ({
     setVariableType(newType);
     const newConfig = { type: varConfig.type } as DynamicVariable;
     if (newType === 'description') {
-      newConfig.description = '';
+      newConfig.description = varConfig.description || '';
     } else if (newType === 'constant') {
-      newConfig.constant_value = '';
-      newConfig.constant_value_type = 'string';
+      newConfig.constant_value = varConfig.constant_value || '';
+      newConfig.constant_value_type = varConfig.constant_value_type || 'string';
     } else if (newType === 'dynamic') {
-      newConfig.dynamic_variable = '';
+      newConfig.dynamic_variable = varConfig.dynamic_variable || '';
     }
     onChange(varName, newConfig);
   };
 
+  // Validation function to check if current variable type has a value
+  const isVariableValid = () => {
+    if (variableType === 'description') {
+      return varConfig.description && varConfig.description.trim() !== '';
+    } else if (variableType === 'constant') {
+      return varConfig.constant_value && varConfig.constant_value.trim() !== '';
+    } else if (variableType === 'dynamic') {
+      return varConfig.dynamic_variable && varConfig.dynamic_variable.trim() !== '';
+    }
+    return false;
+  };
+
+  // Get validation message for display
+  const getValidationMessage = () => {
+    if (variableType === 'description' && (!varConfig.description || !varConfig.description.trim())) {
+      return 'Description is required';
+    } else if (variableType === 'constant' && (!varConfig.constant_value || !varConfig.constant_value.trim())) {
+      return 'Constant value is required';
+    } else if (variableType === 'dynamic' && (!varConfig.dynamic_variable || !varConfig.dynamic_variable.trim())) {
+      return 'Dynamic variable is required';
+    }
+    return null;
+  };
+
+  const validationMessage = getValidationMessage();
+  const hasValidationError = !isVariableValid();
+
   return (
-    <div className="p-4 bg-white dark:bg-dark-200 rounded-lg shadow-sm border border-gray-200 dark:border-dark-100">
+    <div className={`p-4 bg-white dark:bg-dark-200 rounded-lg shadow-sm border transition-colors ${
+      hasValidationError 
+        ? 'border-red-300 dark:border-red-500 bg-red-50/30 dark:bg-red-500/5' 
+        : 'border-gray-200 dark:border-dark-100'
+    }`}>
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary/20 to-primary/10 dark:from-primary/30 dark:to-primary/20 flex items-center justify-center">
-            <Database className="w-5 h-5 text-primary dark:text-primary-400" />
+          <div className={`w-10 h-10 rounded-lg flex items-center justify-center transition-colors ${
+            hasValidationError
+              ? 'bg-gradient-to-br from-red-500/20 to-red-500/10 dark:from-red-500/30 dark:to-red-500/20'
+              : 'bg-gradient-to-br from-primary/20 to-primary/10 dark:from-primary/30 dark:to-primary/20'
+          }`}>
+            <Database className={`w-5 h-5 transition-colors ${
+              hasValidationError 
+                ? 'text-red-500 dark:text-red-400' 
+                : 'text-primary dark:text-primary-400'
+            }`} />
           </div>
           <div className="flex flex-col">
             {isEditing ? (
@@ -83,7 +122,12 @@ export const DataCollectionVariable: React.FC<Props> = ({
                 />
                 <button
                   onClick={() => onSave(varName, editingVarName === varName ? editingVarValue : varName)}
-                  className="p-1 text-green-500 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300"
+                  disabled={!isVariableValid()}
+                  className={`p-1 transition-colors ${
+                    isVariableValid() 
+                      ? 'text-green-500 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300' 
+                      : 'text-gray-300 dark:text-gray-600 cursor-not-allowed'
+                  }`}
                 >
                   <Check className="w-4 h-4" />
                 </button>
@@ -99,12 +143,19 @@ export const DataCollectionVariable: React.FC<Props> = ({
               </div>
             ) : (
               <>
-                <span className="text-sm font-medium text-gray-900 dark:text-white">
-                  {varName}
-                </span>
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm font-medium text-gray-900 dark:text-white">
+                    {varName}
+                  </span>
+                </div>
                 <span className="text-xs text-gray-500 dark:text-gray-400">
                   {varConfig.type} - {variableType}
                 </span>
+                {hasValidationError && (
+                  <span className="text-xs text-red-500 dark:text-red-400 mt-1">
+                    {validationMessage}
+                  </span>
+                )}
               </>
             )}
           </div>
@@ -166,15 +217,23 @@ export const DataCollectionVariable: React.FC<Props> = ({
           {variableType === 'description' && (
             <div className="col-span-2">
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Description
+                Description <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
                 value={varConfig.description || ''}
                 onChange={(e) => onChange(varName, { ...varConfig, description: e.target.value })}
-                className="input text-sm"
+                className={`input text-sm ${
+                  !varConfig.description?.trim() 
+                    ? 'border-red-300 dark:border-red-500 focus:border-red-500 focus:ring-red-500' 
+                    : ''
+                }`}
                 placeholder="Enter description"
+                required
               />
+              {!varConfig.description?.trim() && (
+                <p className="text-xs text-red-500 mt-1">Description is required</p>
+              )}
             </div>
           )}
 
@@ -197,7 +256,7 @@ export const DataCollectionVariable: React.FC<Props> = ({
               </div>
               <div className="col-span-2">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Constant Value
+                  Constant Value <span className="text-red-500">*</span>
                 </label>
                 {varConfig.constant_value_type === 'boolean' ? (
                   <select
@@ -222,9 +281,17 @@ export const DataCollectionVariable: React.FC<Props> = ({
                       }
                       onChange(varName, { ...varConfig, constant_value: value });
                     }}
-                    className="input text-sm"
+                    className={`input text-sm ${
+                      !varConfig.constant_value?.trim() 
+                        ? 'border-red-300 dark:border-red-500 focus:border-red-500 focus:ring-red-500' 
+                        : ''
+                    }`}
                     placeholder={`Enter ${varConfig.constant_value_type} value`}
+                    required
                   />
+                )}
+                {varConfig.constant_value_type !== 'boolean' && !varConfig.constant_value?.trim() && (
+                  <p className="text-xs text-red-500 mt-1">Constant value is required</p>
                 )}
               </div>
             </>
@@ -233,15 +300,23 @@ export const DataCollectionVariable: React.FC<Props> = ({
           {variableType === 'dynamic' && (
             <div className="col-span-2">
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Dynamic Variable
+                Dynamic Variable <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
                 value={varConfig.dynamic_variable || ''}
                 onChange={(e) => onChange(varName, { ...varConfig, dynamic_variable: e.target.value })}
-                className="input text-sm"
+                className={`input text-sm ${
+                  !varConfig.dynamic_variable?.trim() 
+                    ? 'border-red-300 dark:border-red-500 focus:border-red-500 focus:ring-red-500' 
+                    : ''
+                }`}
                 placeholder="Enter dynamic variable"
+                required
               />
+              {!varConfig.dynamic_variable?.trim() && (
+                <p className="text-xs text-red-500 mt-1">Dynamic variable is required</p>
+              )}
             </div>
           )}
         </div>

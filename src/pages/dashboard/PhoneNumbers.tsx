@@ -17,11 +17,12 @@ import {
   Check,
   Info,
   PhoneOutgoing,
+  Link2,
   Copy
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { cn } from '../../lib/utils';
-import { encrypt } from '../../lib/encryption';
+import { generateEncryptedLink, decryptLinkConfiguration, type LinkConfiguration } from '../../lib/encryption';
 
 interface Agent {
   agent_id: string;
@@ -41,8 +42,9 @@ interface PhoneNumber {
   };
 }
 
+
+
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
-const VITE_TWILIO_OUTBOUND_URL = import.meta.env.VITE_TWILIO_OUTBOUND_URL;
 
 const PhoneNumbers = () => {
   const { getEffectiveUser, getEffectiveUserData, isAdmin, user: originalUser } = useAuth();
@@ -74,8 +76,7 @@ const PhoneNumbers = () => {
   const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'inactive'>('all');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [importType, setImportType] = useState<'twilio' | 'sip_trunk'>('twilio'); // Added importType state
-  const [generatedLinks, setGeneratedLinks] = useState<Record<string, string>>({});
-  const [copiedLink, setCopiedLink] = useState<string | null>(null);
+  const [copiedLinks, setCopiedLinks] = useState<Record<string, boolean>>({});
 
   const fetchAgents = async () => {
     if (!user) return;
@@ -118,24 +119,6 @@ const PhoneNumbers = () => {
 
       const data = await response.json();
       setPhoneNumbers(data);
-      
-      // Auto-generate links for numbers with assigned agents
-      const newLinks: Record<string, string> = {};
-      data.forEach((number: PhoneNumber) => {
-        if (number.assigned_agent && number.provider === 'twilio') {
-          // In a real app, you'd fetch the stored credentials from the backend
-          // For now, using formData as placeholder - this should come from the stored phone number data
-          const storedCredentials = {
-            sid: formData.sid || 'stored-sid', // This should be retrieved from backend
-            token: formData.token || 'stored-token'
-          };
-          const link = generateEncryptedLink(number, storedCredentials);
-          if (link) {
-            newLinks[number.phone_number_id] = link;
-          }
-        }
-      });
-      setGeneratedLinks(newLinks);
     } catch (error) {
       console.error('Error fetching phone numbers:', error);
     } finally {
@@ -244,28 +227,6 @@ const PhoneNumbers = () => {
       });
 
       await fetchPhoneNumbers();
-      
-      // Auto-generate link for the newly assigned agent
-      const updatedNumber = phoneNumbers.find(n => n.phone_number_id === isAssigning);
-      if (updatedNumber && assignFormData.assigned_agent_id && updatedNumber.provider === 'twilio') {
-        const storedCredentials = {
-          sid: formData.sid || 'stored-sid', // This should be retrieved from backend
-          token: formData.token || 'stored-token'
-        };
-        const link = generateEncryptedLink({
-          ...updatedNumber,
-          assigned_agent: {
-            agent_id: assignFormData.assigned_agent_id,
-            agent_name: agents.find(a => a.agent_id === assignFormData.assigned_agent_id)?.name || ''
-          }
-        }, storedCredentials);
-        if (link) {
-          setGeneratedLinks(prev => ({
-            ...prev,
-            [isAssigning]: link
-          }));
-        }
-      }
     } catch (error) {
       console.error('Error assigning agent:', error);
       setError('Failed to assign agent. Please try again.');
@@ -313,35 +274,30 @@ const PhoneNumbers = () => {
     }
   };
 
-  const generateEncryptedLink = (phoneNumber: PhoneNumber, storedCredentials: any) => {
-    if (!phoneNumber.assigned_agent || phoneNumber.provider !== 'twilio') return null;
-    
+  const generateLink = (number: PhoneNumber): string => {
+    if (!number.assigned_agent) return '';
+
+    const linkConfiguration: LinkConfiguration = {
+      agent_id: number.assigned_agent.agent_id,
+      agent_phone_number_id: number.phone_number_id,
+    };
+
+    return generateEncryptedLink(linkConfiguration);
+  };
+
+  const copyLink = async (phoneNumberId: string, link: string) => {
     try {
-      const payload = {
-        twilioNumber: phoneNumber.phone_number,
-        authId: storedCredentials.sid,
-        sid: storedCredentials.sid,
-        agentId: phoneNumber.assigned_agent.agent_id,
-        baseUrl: window.location.origin
-      };
-      
-      const encryptedData = encrypt(JSON.stringify(payload));
-      return `${VITE_TWILIO_OUTBOUND_URL}/agent-link/${encryptedData}`;
+      await navigator.clipboard.writeText(link);
+      setCopiedLinks({ ...copiedLinks, [phoneNumberId]: true });
+      setTimeout(() => {
+        setCopiedLinks(prev => ({ ...prev, [phoneNumberId]: false }));
+      }, 2000);
     } catch (error) {
-      console.error('Error generating link:', error);
-      return null;
+      console.error('Failed to copy link:', error);
     }
   };
 
-  const copyToClipboard = async (text: string, linkId: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopiedLink(linkId);
-      setTimeout(() => setCopiedLink(null), 2000);
-    } catch (error) {
-      console.error('Failed to copy to clipboard:', error);
-    }
-  };
+
 
   const filteredNumbers = phoneNumbers.filter((number) => {
     const matchesSearch = 
@@ -985,6 +941,8 @@ const PhoneNumbers = () => {
         )}
       </AnimatePresence>
 
+
+
       {/* Phone Numbers List */}
       <div className="bg-white dark:bg-dark-200 rounded-xl shadow-sm border border-gray-100 dark:border-dark-100 overflow-hidden">
         {loadingNumbers ? (
@@ -1061,44 +1019,29 @@ const PhoneNumbers = () => {
                           </div>
                         )}
                       </div>
-                      
-                      {number.provider === 'twilio' && (
-                          <div className="flex items-center space-x-2 min-h-[2rem]">
-                            <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                              Link:
-                            </span>
-                            {number.assigned_agent && generatedLinks[number.phone_number_id] ? (
-                              <div className="flex items-center space-x-2">
-                                <span className="text-sm font-medium text-gray-900 dark:text-white bg-gray-100 dark:bg-dark-100 px-2 py-1 rounded font-mono">
-                                  {generatedLinks[number.phone_number_id].length > 40 
-                                    ? `${generatedLinks[number.phone_number_id].substring(0, 40)}...`
-                                    : generatedLinks[number.phone_number_id]
-                                  }
-                                </span>
-                                <button
-                                  onClick={() => copyToClipboard(generatedLinks[number.phone_number_id], number.phone_number_id)}
-                                  className={cn(
-                                    "p-1 rounded transition-colors",
-                                    copiedLink === number.phone_number_id
-                                      ? "text-green-600 dark:text-green-400"
-                                      : "text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
-                                  )}
-                                >
-                                  {copiedLink === number.phone_number_id ? (
-                                    <Check className="w-4 h-4" />
-                                  ) : (
-                                    <Copy className="w-4 h-4" />
-                                  )}
-                                </button>
-                              </div>
-                            ) : (
-                              <span className="text-sm text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-dark-100 px-2 py-1 rounded">
-                                Assign an agent to generate a link
-                              </span>
-                            )}
+                      {/* Generated Link */}
+                      {number.assigned_agent && number.provider === 'twilio' && (
+                        <div className="mt-2 flex items-center space-x-2">
+                          <div className="flex items-center space-x-2 bg-green-50/50 dark:bg-green-400/10 px-3 py-1.5 rounded-lg">
+                            <Link2 className="w-4 h-4 text-green-600 dark:text-green-400" />
+                            <input
+                              type="text"
+                              value={generateLink(number)}
+                              readOnly
+                              className="text-sm bg-transparent border-none outline-none text-green-600 dark:text-green-400 font-mono w-60 truncate"
+                            />
+                            <button
+                              onClick={() => copyLink(number.phone_number_id, generateLink(number))}
+                              className="flex items-center space-x-1 px-2 py-1 text-sm font-medium text-green-700 dark:text-green-300 hover:bg-green-100 dark:hover:bg-green-400/20 rounded transition-colors"
+                            >
+                              {copiedLinks[number.phone_number_id] ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                              <span>{copiedLinks[number.phone_number_id] ? 'Copied!' : 'Copy'}</span>
+                            </button>
                           </div>
-                        )}
+                        </div>
+                      )}
                     </div>
+
                   </div>
                   <div className="flex items-center space-x-4">
                     {number.assigned_agent ? (
@@ -1144,14 +1087,17 @@ const PhoneNumbers = () => {
                         <span>{number.assigned_agent ? 'Change Agent' : 'Assign Agent'}</span>
                       </button>
                       {number.assigned_agent && (
-                        <button
-                          onClick={() => setIsOutboundCalling(number)}
-                          className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-primary dark:text-primary-400 hover:text-primary-600 dark:hover:text-primary-300 bg-primary-50/50 dark:bg-primary-400/10 hover:bg-primary-100/50 dark:hover:bg-primary-400/20 rounded-lg transition-colors"
-                        >
-                          <PhoneOutgoing className="w-4 h-4" />
-                          <span>Outbound Call</span>
-                        </button>
+                        <>
+                          <button
+                            onClick={() => setIsOutboundCalling(number)}
+                            className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-primary dark:text-primary-400 hover:text-primary-600 dark:hover:text-primary-300 bg-primary-50/50 dark:bg-primary-400/10 hover:bg-primary-100/50 dark:hover:bg-primary-400/20 rounded-lg transition-colors"
+                          >
+                            <PhoneOutgoing className="w-4 h-4" />
+                            <span>Outbound Call</span>
+                          </button>
+                        </>
                       )}
+
                     </div>
                   </div>
                 </div>
