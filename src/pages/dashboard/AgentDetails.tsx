@@ -393,20 +393,20 @@ const AgentDetails = () => {
       // Initialize dynamic variable placeholders
       const dynamicVars = extractDynamicVariables(initialForm.first_message);
       const placeholders: {[key: string]: string} = {};
-      
+
       // First, populate with existing saved values from backend
       const savedPlaceholders = agentData.conversation_config.agent.dynamic_variables?.dynamic_variable_placeholders || {};
       Object.keys(savedPlaceholders).forEach(key => {
         placeholders[key] = savedPlaceholders[key] || '';
       });
-      
+
       // Then, ensure all variables found in the message have entries (with empty string if not saved)
       dynamicVars.forEach(varName => {
         if (placeholders[varName] === undefined) {
           placeholders[varName] = '';
         }
       });
-      
+
       setDynamicVariablePlaceholders(placeholders);
 
       // Reset secret fields
@@ -526,11 +526,19 @@ const AgentDetails = () => {
                 },
                 first_message: conversationInitiationMode === "user" ? "" : editedForm.first_message,
                 language: editedForm.language,
-                ...(Object.keys(dynamicVariablePlaceholders).length > 0 && {
-                  dynamic_variables: {
-                    dynamic_variable_placeholders: dynamicVariablePlaceholders
+                ...(() => {
+                  const firstMessage = conversationInitiationMode === "user" ? "" : editedForm.first_message;
+                  const dynamicVarsInMessage = extractDynamicVariables(firstMessage);
+
+                  if (dynamicVarsInMessage.length > 0 && Object.keys(dynamicVariablePlaceholders).length > 0) {
+                    return {
+                      dynamic_variables: {
+                        dynamic_variable_placeholders: dynamicVariablePlaceholders
+                      }
+                    };
                   }
-                })
+                  return {};
+                })()
               },
               tts: {
                 voice_id: editedForm.voice_id,
@@ -634,21 +642,21 @@ const AgentDetails = () => {
     if (field === 'first_message' && typeof value === 'string') {
       const dynamicVars = extractDynamicVariables(value);
       const newPlaceholders = { ...dynamicVariablePlaceholders };
-      
+
       // Add new variables
       dynamicVars.forEach(varName => {
         if (!newPlaceholders[varName]) {
           newPlaceholders[varName] = '';
         }
       });
-      
+
       // Remove variables that are no longer in the message
       Object.keys(newPlaceholders).forEach(varName => {
         if (!dynamicVars.includes(varName)) {
           delete newPlaceholders[varName];
         }
       });
-      
+
       setDynamicVariablePlaceholders(newPlaceholders);
     }
   };
