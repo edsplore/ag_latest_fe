@@ -393,9 +393,20 @@ const AgentDetails = () => {
       // Initialize dynamic variable placeholders
       const dynamicVars = extractDynamicVariables(initialForm.first_message);
       const placeholders: {[key: string]: string} = {};
-      dynamicVars.forEach(varName => {
-        placeholders[varName] = '';
+      
+      // First, populate with existing saved values from backend
+      const savedPlaceholders = agentData.conversation_config.agent.dynamic_variables?.dynamic_variable_placeholders || {};
+      Object.keys(savedPlaceholders).forEach(key => {
+        placeholders[key] = savedPlaceholders[key] || '';
       });
+      
+      // Then, ensure all variables found in the message have entries (with empty string if not saved)
+      dynamicVars.forEach(varName => {
+        if (placeholders[varName] === undefined) {
+          placeholders[varName] = '';
+        }
+      });
+      
       setDynamicVariablePlaceholders(placeholders);
 
       // Reset secret fields
