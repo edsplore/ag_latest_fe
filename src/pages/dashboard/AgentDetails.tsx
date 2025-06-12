@@ -1794,6 +1794,9 @@ const AgentDetails = () => {
                 {/* First Message Configuration - Only show when bot starts */}
                 {conversationInitiationMode === "bot" && (
                   <div className="space-y-3 pl-4 border-l-2 border-primary/20 dark:border-primary/30">
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      Choose a predefined opening message or create a custom one for your agent.
+                    </p>
                     <h4 className="text-sm font-medium text-gray-900 dark:text-white">
                       Bot's Opening Message
                     </h4>
@@ -1878,20 +1881,9 @@ const AgentDetails = () => {
                       />
                     )}
 
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                      Choose a predefined opening message or create a custom one for your agent.
-                    </p>
-
                     {/* Dynamic Variable Placeholders */}
                     {Object.keys(dynamicVariablePlaceholders).length > 0 && (
-                      <div className="mt-6 space-y-4">
-                        <div className="flex items-center space-x-2">
-                          <Database className="w-4 h-4 text-primary dark:text-primary-400" />
-                          <h4 className="text-sm font-medium text-gray-900 dark:text-white">
-                            Dynamic Variable Placeholders
-                          </h4>
-                        </div>
-                        <div className="pl-4 border-l-2 border-primary/20 dark:border-primary/30 space-y-3">
+                        <div className="space-y-3">
                           <p className="text-sm text-gray-500 dark:text-gray-400">
                             Define values for the dynamic variables found in your first message.
                           </p>
@@ -1916,7 +1908,6 @@ const AgentDetails = () => {
                             </div>
                           ))}
                         </div>
-                      </div>
                     )}
                   </div>
                 )}
