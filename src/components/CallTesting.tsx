@@ -6,10 +6,10 @@ import { Loader } from './Loader';
 
 interface CallTestingProps {
   agentId: string;
-  dynamicVariablePlaceholders?: {[key: string]: string};
+  dynamicVariables?: {[key: string]: string | number | boolean}; // Updated type and name
 }
 
-const CallTesting: React.FC<CallTestingProps> = ({ agentId, dynamicVariablePlaceholders = {} }) => {
+const CallTesting: React.FC<CallTestingProps> = ({ agentId, dynamicVariables = {} }) => {
   const [conversation, setConversation] = useState<any>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -40,17 +40,19 @@ const CallTesting: React.FC<CallTestingProps> = ({ agentId, dynamicVariablePlace
         const permission = await requestMicrophonePermission();
         if (!permission) {
           alert('Microphone permission is required for the conversation.');
+          setIsLoading(false);
           return;
         }
 
+        console.log({dynamicVariables})
+
         const conv = await Conversation.startSession({
           agentId,
-          clientData: Object.keys(dynamicVariablePlaceholders).length > 0 ? {
-            dynamic_variable_placeholders: dynamicVariablePlaceholders
-          } : undefined,
+          dynamicVariables: Object.keys(dynamicVariables).length > 0 ? dynamicVariables : undefined,
           onConnect: () => {
             console.log('Connected');
             setIsConnected(true);
+            setIsLoading(false);
           },
           onDisconnect: () => {
             console.log('Disconnected');
@@ -59,7 +61,9 @@ const CallTesting: React.FC<CallTestingProps> = ({ agentId, dynamicVariablePlace
           },
           onError: (error) => {
             console.error('Conversation error:', error);
-            alert('An error occurred during the conversation.');
+            setIsConnected(false);
+            setIsLoading(false);
+            alert(`Conversation error: ${error.message || 'Unknown error'}`);
           },
           onModeChange: (mode) => {
             console.log('Mode changed:', mode);
@@ -70,9 +74,8 @@ const CallTesting: React.FC<CallTestingProps> = ({ agentId, dynamicVariablePlace
         setConversation(conv);
       } catch (error) {
         console.error('Error starting conversation:', error);
-        alert('Failed to start conversation. Please try again.');
-      } finally {
         setIsLoading(false);
+        alert(`Failed to start conversation: ${error.message || 'Please try again.'}`);
       }
     }
   };
@@ -93,6 +96,12 @@ const CallTesting: React.FC<CallTestingProps> = ({ agentId, dynamicVariablePlace
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
             Click the microphone to start a conversation
           </p>
+          {/* Debug info for dynamic variables */}
+          {Object.keys(dynamicVariables).length > 0 && (
+            <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded text-xs">
+              <strong>Dynamic Variables:</strong> {Object.keys(dynamicVariables).join(', ')}
+            </div>
+          )}
         </div>
 
         {hasPermission === false && (
