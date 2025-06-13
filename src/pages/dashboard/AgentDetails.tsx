@@ -537,7 +537,11 @@ const AgentDetails = () => {
                       }
                     };
                   }
-                  return {};
+                  return {
+                    dynamic_variables: {
+                      dynamic_variable_placeholders: {}
+                    }
+                  }
                 })()
               },
               tts: {
