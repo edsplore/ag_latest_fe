@@ -6,9 +6,10 @@ import { Loader } from './Loader';
 
 interface CallTestingProps {
   agentId: string;
+  dynamicVariablePlaceholders?: {[key: string]: string};
 }
 
-const CallTesting: React.FC<CallTestingProps> = ({ agentId }) => {
+const CallTesting: React.FC<CallTestingProps> = ({ agentId, dynamicVariablePlaceholders = {} }) => {
   const [conversation, setConversation] = useState<any>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -44,6 +45,9 @@ const CallTesting: React.FC<CallTestingProps> = ({ agentId }) => {
 
         const conv = await Conversation.startSession({
           agentId,
+          clientData: Object.keys(dynamicVariablePlaceholders).length > 0 ? {
+            dynamic_variable_placeholders: dynamicVariablePlaceholders
+          } : undefined,
           onConnect: () => {
             console.log('Connected');
             setIsConnected(true);

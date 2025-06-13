@@ -2228,7 +2228,12 @@ const AgentDetails = () => {
 
         {/* Call Testing Section */}
         <div className="w-96">
-          {agent && <CallTesting agentId={agent.agent_id} />}
+          {agent && (
+            <CallTesting 
+              agentId={agent.agent_id} 
+              dynamicVariablePlaceholders={dynamicVariablePlaceholders}
+            />
+          )}
         </div>
       </div>
 
