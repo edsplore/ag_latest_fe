@@ -44,18 +44,14 @@ const CallTesting: React.FC<CallTestingProps> = ({ agentId, dynamicVariables = {
           return;
         }
 
-        console.log({dynamicVariables})
-
         const conv = await Conversation.startSession({
           agentId,
           dynamicVariables: Object.keys(dynamicVariables).length > 0 ? dynamicVariables : undefined,
           onConnect: () => {
-            console.log('Connected');
             setIsConnected(true);
             setIsLoading(false);
           },
           onDisconnect: () => {
-            console.log('Disconnected');
             setIsConnected(false);
             setIsSpeaking(false);
           },
@@ -66,7 +62,6 @@ const CallTesting: React.FC<CallTestingProps> = ({ agentId, dynamicVariables = {
             alert(`Conversation error: ${error.message || 'Unknown error'}`);
           },
           onModeChange: (mode) => {
-            console.log('Mode changed:', mode);
             setIsSpeaking(mode.mode === 'speaking');
           },
         });

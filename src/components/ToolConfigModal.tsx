@@ -188,6 +188,18 @@ export const ToolConfigModal = ({
             request_body_schema: {
               type: 'object',
               properties: {
+                apiKey: {
+                  type: "string",
+                  constant_value: ``
+                }, 
+                calendarId: {
+                  type: "string",
+                  constant_value: ``
+                }, 
+                locationId: {
+                  type: "string",
+                  constant_value: ``
+                },
                 startTime: {
                   type: 'string',
                   description: 'Event start time in ISO 8601 format with timezone offset (e.g. 2021-06-23T03:30:00+05:30)'
