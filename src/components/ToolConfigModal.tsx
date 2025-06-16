@@ -9,6 +9,9 @@ interface Tool {
   name: string;
   description: string;
   expects_response?: boolean;
+  ghlApiKey?: string;
+  ghlCalendarId?: string;
+  ghlLocationId?: string;
   params?: {
     system_tool_type?: string;
     transfers?: {
@@ -26,6 +29,7 @@ interface Tool {
           type: string;
           description: string;
           dynamic_variable?: string;
+          constant_value?: string;
           properties?: {
             [key: string]: {
               type: string;
@@ -177,6 +181,12 @@ export const ToolConfigModal = ({
       }
 
       else if (editedTool.type === "ghl_booking") {
+        // Validate required GHL fields
+        if (!editedTool.ghlApiKey || !editedTool.ghlCalendarId || !editedTool.ghlLocationId) {
+          setError("All GHL fields (API Key, Calendar ID, Location ID) are required");
+          return;
+        }
+
         backendConfig = {
           name: "GHL_BOOKING",
           type: "webhook",
@@ -190,15 +200,15 @@ export const ToolConfigModal = ({
               properties: {
                 apiKey: {
                   type: "string",
-                  constant_value: ``
+                  constant_value: editedTool.ghlApiKey
                 }, 
                 calendarId: {
                   type: "string",
-                  constant_value: ``
+                  constant_value: editedTool.ghlCalendarId
                 }, 
                 locationId: {
                   type: "string",
-                  constant_value: ``
+                  constant_value: editedTool.ghlLocationId
                 },
                 startTime: {
                   type: 'string',
@@ -484,6 +494,62 @@ export const ToolConfigModal = ({
 
                   {editedTool.type === "ghl_booking" && (
                     <div className="space-y-4">
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-sm font-lato font-semibold text-gray-900 dark:text-white mb-2">
+                            GHL API Key <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            value={editedTool.ghlApiKey || ""}
+                            onChange={(e) =>
+                              setEditedTool((prev) => ({
+                                ...prev,
+                                ghlApiKey: e.target.value,
+                              }))
+                            }
+                            className="input font-lato font-semibold focus:border-primary dark:focus:border-primary-400"
+                            placeholder="Enter your GHL API key"
+                          />
+                        </div>
+                        
+                        <div>
+                          <label className="block text-sm font-lato font-semibold text-gray-900 dark:text-white mb-2">
+                            Calendar ID <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            value={editedTool.ghlCalendarId || ""}
+                            onChange={(e) =>
+                              setEditedTool((prev) => ({
+                                ...prev,
+                                ghlCalendarId: e.target.value,
+                              }))
+                            }
+                            className="input font-lato font-semibold focus:border-primary dark:focus:border-primary-400"
+                            placeholder="Enter GHL calendar ID"
+                          />
+                        </div>
+                        
+                        <div>
+                          <label className="block text-sm font-lato font-semibold text-gray-900 dark:text-white mb-2">
+                            Location ID <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            value={editedTool.ghlLocationId || ""}
+                            onChange={(e) =>
+                              setEditedTool((prev) => ({
+                                ...prev,
+                                ghlLocationId: e.target.value,
+                              }))
+                            }
+                            className="input font-lato font-semibold focus:border-primary dark:focus:border-primary-400"
+                            placeholder="Enter GHL location ID"
+                          />
+                        </div>
+                      </div>
+
                       <div className="p-4 bg-gray-50 dark:bg-dark-100 rounded-lg">
                         <h3 className="text-sm font-lato font-semibold text-gray-900 dark:text-white mb-3">
                           Required Parameters Example
@@ -609,11 +675,17 @@ export const ToolConfigModal = ({
                   </button>
                   <button
                     onClick={handleSaveAndClose}
-                    disabled={!!nameError || !!jsonError}
+                    disabled={
+                      !!nameError || 
+                      !!jsonError || 
+                      (editedTool.type === "ghl_booking" && (!editedTool.ghlApiKey || !editedTool.ghlCalendarId || !editedTool.ghlLocationId))
+                    }
                     className={cn(
                       "px-4 py-2 text-sm font-lato font-semibold text-white bg-primary rounded-lg",
                       "hover:bg-primary-600 transition-colors",
-                      (!!nameError || !!jsonError) &&
+                      (!!nameError || 
+                       !!jsonError || 
+                       (editedTool.type === "ghl_booking" && (!editedTool.ghlApiKey || !editedTool.ghlCalendarId || !editedTool.ghlLocationId))) &&
                         "opacity-50 cursor-not-allowed",
                     )}
                   >
