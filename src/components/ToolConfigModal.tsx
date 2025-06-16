@@ -12,6 +12,7 @@ interface Tool {
   ghlApiKey?: string;
   ghlCalendarId?: string;
   ghlLocationId?: string;
+  calApiKey?: string;
   params?: {
     system_tool_type?: string;
     transfers?: {
@@ -133,6 +134,12 @@ export const ToolConfigModal = ({
       toolCopy.ghlApiKey = schema.apiKey?.constant_value || '';
       toolCopy.ghlCalendarId = schema.calendarId?.constant_value || '';
       toolCopy.ghlLocationId = schema.locationId?.constant_value || '';
+    }
+    
+    // Map saved Cal.com API key from the backend schema if it's a Cal.com booking tool
+    if (toolCopy.name === "CAL_BOOKING" && toolCopy.api_schema?.request_body_schema?.properties) {
+      const schema = toolCopy.api_schema.request_body_schema.properties;
+      toolCopy.calApiKey = schema.apiKey?.constant_value || '';
     }
     
     return toolCopy;
@@ -265,6 +272,12 @@ export const ToolConfigModal = ({
         };
         updatedTool = backendConfig;
       } else if (editedTool.type === "calcom") {
+        // Validate required Cal.com fields
+        if (!editedTool.calApiKey) {
+          setError("Cal.com API Key is required");
+          return;
+        }
+
         backendConfig = {
           name: "CAL_BOOKING",
           type: "webhook",
@@ -275,6 +288,10 @@ export const ToolConfigModal = ({
             request_body_schema: {
               type: 'object',
               properties: {
+                apiKey: {
+                  type: "string",
+                  constant_value: editedTool.calApiKey
+                },
                 start: {
                   type: 'string',
                   description: 'Event start time in ISO 8601 format with UTC timezone (e.g. 2024-08-13T09:00:00Z)'
@@ -303,7 +320,7 @@ export const ToolConfigModal = ({
                   description: 'Attendee information for the booking'
                 }
               },
-              required: ['start', 'end', 'attendee'] // Added userId to required
+              required: ['start', 'end', 'attendee']
             }
           }
         };
@@ -583,6 +600,24 @@ export const ToolConfigModal = ({
 
                   {editedTool.type === "calcom" && (
                     <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-lato font-semibold text-gray-900 dark:text-white mb-2">
+                          Cal.com API Key <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={editedTool.calApiKey || ""}
+                          onChange={(e) =>
+                            setEditedTool((prev) => ({
+                              ...prev,
+                              calApiKey: e.target.value,
+                            }))
+                          }
+                          className="input font-lato font-semibold focus:border-primary dark:focus:border-primary-400"
+                          placeholder="Enter your Cal.com API key"
+                        />
+                      </div>
+                      
                       <div className="p-4 bg-gray-50 dark:bg-dark-100 rounded-lg">
                         <h3 className="text-sm font-lato font-semibold text-gray-900 dark:text-white mb-3">
                           Required Parameters Example
@@ -687,14 +722,16 @@ export const ToolConfigModal = ({
                     disabled={
                       !!nameError || 
                       !!jsonError || 
-                      (editedTool.type === "ghl_booking" && (!editedTool.ghlApiKey || !editedTool.ghlCalendarId || !editedTool.ghlLocationId))
+                      (editedTool.type === "ghl_booking" && (!editedTool.ghlApiKey || !editedTool.ghlCalendarId || !editedTool.ghlLocationId)) ||
+                      (editedTool.type === "calcom" && !editedTool.calApiKey)
                     }
                     className={cn(
                       "px-4 py-2 text-sm font-lato font-semibold text-white bg-primary rounded-lg",
                       "hover:bg-primary-600 transition-colors",
                       (!!nameError || 
                        !!jsonError || 
-                       (editedTool.type === "ghl_booking" && (!editedTool.ghlApiKey || !editedTool.ghlCalendarId || !editedTool.ghlLocationId))) &&
+                       (editedTool.type === "ghl_booking" && (!editedTool.ghlApiKey || !editedTool.ghlCalendarId || !editedTool.ghlLocationId)) ||
+                       (editedTool.type === "calcom" && !editedTool.calApiKey)) &&
                         "opacity-50 cursor-not-allowed",
                     )}
                   >
