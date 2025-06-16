@@ -126,6 +126,15 @@ export const ToolConfigModal = ({
     } else {
       toolCopy.type = getDisplayType(toolCopy.name);
     }
+    
+    // Map saved GHL values from the backend schema if it's a GHL booking tool
+    if (toolCopy.name === "GHL_BOOKING" && toolCopy.api_schema?.request_body_schema?.properties) {
+      const schema = toolCopy.api_schema.request_body_schema.properties;
+      toolCopy.ghlApiKey = schema.apiKey?.constant_value || '';
+      toolCopy.ghlCalendarId = schema.calendarId?.constant_value || '';
+      toolCopy.ghlLocationId = schema.locationId?.constant_value || '';
+    }
+    
     return toolCopy;
   });
   const [error, setError] = useState("");
