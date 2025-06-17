@@ -139,7 +139,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signInWithGoogle = async () => {
     try {
       const provider = new GoogleAuthProvider();
-      const userCredential = await signInWithPopup(auth, provider);
+      provider.addScope('email');
+      provider.addScope('profile');
+      
+      // Add custom parameters for better popup handling
+      provider.setCustomParameters({
+        prompt: 'select_account'
+      });
+
+      let userCredential;
+      try {
+        // Try popup first
+        userCredential = await signInWithPopup(auth, provider);
+      } catch (popupError) {
+        // If popup fails, throw the error to be handled by the calling function
+        throw popupError;
+      }
+
       const user = userCredential.user;
 
       // Check if user document exists in Firestore
@@ -165,13 +181,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (error instanceof FirebaseError) {
         switch (error.code) {
           case 'auth/popup-closed-by-user':
-            throw new Error('Sign-in popup was closed');
+            throw new Error('Sign-in popup was closed. Please try again.');
           case 'auth/popup-blocked':
-            throw new Error('Sign-in popup was blocked by browser');
+            throw new Error('Sign-in popup was blocked by your browser. Please allow popups for this site.');
           case 'auth/cancelled-popup-request':
-            throw new Error('Sign-in was cancelled');
+            throw new Error('Sign-in was cancelled.');
+          case 'auth/unauthorized-domain':
+            throw new Error('This domain is not authorized for Google sign-in.');
+          case 'auth/operation-not-allowed':
+            throw new Error('Google sign-in is not enabled. Please contact support.');
+          case 'auth/invalid-api-key':
+            throw new Error('Invalid API key configuration.');
           default:
-            throw new Error('An error occurred during Google sign-in');
+            console.error('Google sign-in error:', error);
+            throw new Error(`Google sign-in failed: ${error.message}`);
         }
       }
       throw error;

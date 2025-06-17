@@ -43,7 +43,7 @@ const Login = () => {
       if (err.message) {
         setError(err.message);
       } else {
-        setError('Failed to sign in with Google.');
+        setError('Failed to sign in with Google. Please try again.');
       }
     } finally {
       setGoogleLoading(false);
