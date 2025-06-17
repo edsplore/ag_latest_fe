@@ -9,6 +9,61 @@ import AgentDetails from './pages/dashboard/AgentDetails';
 import KnowledgeBaseDetails from './pages/dashboard/KnowledgeBaseDetails';
 import { Loader } from './components/Loader';
 
+function App() {
+  return (
+    <AuthProvider>
+      <Router>
+        <div className="min-h-screen bg-light dark:bg-dark-300 transition-colors duration-200">
+          <Routes>
+            <Route 
+              path="/" 
+              element={
+                <PublicRoute>
+                  <LandingPage />
+                </PublicRoute>
+              } 
+            />
+            <Route 
+              path="/login" 
+              element={
+                <PublicRoute>
+                  <Login />
+                </PublicRoute>
+              } 
+            />
+            <Route 
+              path="/signup" 
+              element={
+                <PublicRoute>
+                  <Signup />
+                </PublicRoute>
+              } 
+            />
+            <Route 
+              path="/dashboard" 
+              element={
+                <ProtectedRoute>
+                  <Dashboard />
+                </ProtectedRoute>
+              } 
+            />
+            <Route path="/dashboard/agents/:agentId" element={<ProtectedRoute><AgentDetails /></ProtectedRoute>} />
+            <Route path="/dashboard/knowledge/:documentId" element={<ProtectedRoute><KnowledgeBaseDetails /></ProtectedRoute>} />
+            <Route 
+              path="/dashboard/*" 
+              element={
+                <ProtectedRoute>
+                  <Dashboard />
+                </ProtectedRoute>
+              } 
+            />
+          </Routes>
+        </div>
+      </Router>
+    </AuthProvider>
+  );
+}
+
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, loading } = useAuth();
 
@@ -28,66 +83,5 @@ const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
   return user ? <Navigate to="/dashboard" /> : <>{children}</>;
 };
-
-const AppContent: React.FC = () => {
-  return (
-    <Router>
-      <div className="min-h-screen bg-light dark:bg-dark-300 transition-colors duration-200">
-        <Routes>
-          <Route 
-            path="/" 
-            element={
-              <PublicRoute>
-                <LandingPage />
-              </PublicRoute>
-            } 
-          />
-          <Route 
-            path="/login" 
-            element={
-              <PublicRoute>
-                <Login />
-              </PublicRoute>
-            } 
-          />
-          <Route 
-            path="/signup" 
-            element={
-              <PublicRoute>
-                <Signup />
-              </PublicRoute>
-            } 
-          />
-          <Route 
-            path="/dashboard" 
-            element={
-              <ProtectedRoute>
-                <Dashboard />
-              </ProtectedRoute>
-            } 
-          />
-          <Route path="/dashboard/agents/:agentId" element={<ProtectedRoute><AgentDetails /></ProtectedRoute>} />
-          <Route path="/dashboard/knowledge/:documentId" element={<ProtectedRoute><KnowledgeBaseDetails /></ProtectedRoute>} />
-          <Route 
-            path="/dashboard/*" 
-            element={
-              <ProtectedRoute>
-                <Dashboard />
-              </ProtectedRoute>
-            } 
-          />
-        </Routes>
-      </div>
-    </Router>
-  );
-};
-
-function App() {
-  return (
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
-  );
-}
 
 export default App;

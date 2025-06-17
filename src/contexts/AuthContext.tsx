@@ -141,7 +141,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const provider = new GoogleAuthProvider();
       provider.addScope('email');
       provider.addScope('profile');
-      
+
       // Add custom parameters for better popup handling
       provider.setCustomParameters({
         prompt: 'select_account'
@@ -178,7 +178,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUserData(userDoc.data() as UserData);
       }
     } catch (error) {
+      console.error('Google sign-in detailed error:', error);
+
       if (error instanceof FirebaseError) {
+        console.error('Firebase error code:', error.code);
+        console.error('Firebase error message:', error.message);
+
         switch (error.code) {
           case 'auth/popup-closed-by-user':
             throw new Error('Sign-in popup was closed. Please try again.');
@@ -187,17 +192,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           case 'auth/cancelled-popup-request':
             throw new Error('Sign-in was cancelled.');
           case 'auth/unauthorized-domain':
-            throw new Error('This domain is not authorized for Google sign-in.');
+            throw new Error('This domain is not authorized for Google sign-in. Please wait a few minutes for changes to take effect.');
           case 'auth/operation-not-allowed':
             throw new Error('Google sign-in is not enabled. Please contact support.');
           case 'auth/invalid-api-key':
             throw new Error('Invalid API key configuration.');
+          case 'auth/network-request-failed':
+            throw new Error('Network error. Please check your internet connection and try again.');
           default:
-            console.error('Google sign-in error:', error);
-            throw new Error(`Google sign-in failed: ${error.message}`);
+            console.error('Unhandled Google sign-in error:', error);
+            throw new Error(`Google sign-in failed: ${error.message || 'Unknown error'}`);
         }
       }
-      throw error;
+
+      // Handle non-Firebase errors
+      if (error && typeof error === 'object' && 'message' in error) {
+        throw new Error(`Sign-in failed: ${error.message}`);
+      }
+
+      throw new Error('An unexpected error occurred during Google sign-in. Please try again.');
     }
   };
 
@@ -228,7 +241,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       const impersonatedUserData = userDoc.data() as UserData;
-      
+
       // Create a mock User object for the impersonated user
       const mockUser: User = {
         uid: userId,
