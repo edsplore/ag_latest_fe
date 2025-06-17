@@ -4,7 +4,9 @@ import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
-  signOut
+  signOut,
+  signInWithPopup,
+  GoogleAuthProvider
 } from 'firebase/auth';
 import { FirebaseError } from 'firebase/app';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
@@ -24,6 +26,7 @@ interface AuthContextType {
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string) => Promise<void>;
+  signInWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
   isAdmin: () => boolean;
   impersonatedUser: User | null;
@@ -133,6 +136,48 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const signInWithGoogle = async () => {
+    try {
+      const provider = new GoogleAuthProvider();
+      const userCredential = await signInWithPopup(auth, provider);
+      const user = userCredential.user;
+
+      // Check if user document exists in Firestore
+      const userDocRef = doc(db, 'users', user.uid);
+      const userDoc = await getDoc(userDocRef);
+
+      if (!userDoc.exists()) {
+        // Create new user document if it doesn't exist
+        const userData: UserData = {
+          email: user.email!,
+          role: 'user',
+          createdByAdmin: false,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        };
+
+        await setDoc(userDocRef, userData);
+        setUserData(userData);
+      } else {
+        setUserData(userDoc.data() as UserData);
+      }
+    } catch (error) {
+      if (error instanceof FirebaseError) {
+        switch (error.code) {
+          case 'auth/popup-closed-by-user':
+            throw new Error('Sign-in popup was closed');
+          case 'auth/popup-blocked':
+            throw new Error('Sign-in popup was blocked by browser');
+          case 'auth/cancelled-popup-request':
+            throw new Error('Sign-in was cancelled');
+          default:
+            throw new Error('An error occurred during Google sign-in');
+        }
+      }
+      throw error;
+    }
+  };
+
   const logout = async () => {
     try {
       await signOut(auth);
@@ -214,6 +259,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     loading,
     signIn,
     signUp,
+    signInWithGoogle,
     logout,
     isAdmin,
     impersonatedUser,
