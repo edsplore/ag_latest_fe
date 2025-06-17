@@ -18,7 +18,8 @@ const Signup = () => {
     e.preventDefault();
 
     if (password !== confirmPassword) {
-      return setError('Passwords do not match');
+      setError('Passwords do not match');
+      return;
     }
 
     try {
@@ -26,25 +27,30 @@ const Signup = () => {
       setLoading(true);
       await signUp(email, password);
       navigate('/dashboard');
-    } catch (err) {
-      setError('Failed to create an account');
+    } catch (err: any) {
+      console.error('Signup error:', err);
+      if (err.message) {
+        setError(err.message);
+      } else {
+        setError('Failed to create account. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
   };
 
-  const handleGoogleSignIn = async () => {
+  const handleGoogleSignUp = async () => {
     try {
       setError('');
       setGoogleLoading(true);
       await signInWithGoogle();
       navigate('/dashboard');
     } catch (err: any) {
-      console.error('Google sign-in error:', err);
+      console.error('Google sign-up error:', err);
       if (err.message) {
         setError(err.message);
       } else {
-        setError('Failed to sign in with Google. Please try again.');
+        setError('Failed to sign up with Google. Please try again.');
       }
     } finally {
       setGoogleLoading(false);
@@ -171,7 +177,7 @@ const Signup = () => {
                 className="w-full flex justify-center items-center py-2.5 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed dark:focus:ring-offset-dark-200"
               >
                 <UserPlus className="w-4 h-4 mr-2" />
-                <span>{loading ? 'Creating Account...' : 'Create Account'}</span>
+                <span>{loading ? 'Creating account...' : 'Create account'}</span>
               </motion.button>
             </div>
 
@@ -188,7 +194,7 @@ const Signup = () => {
               <div className="mt-6">
                 <motion.button
                   type="button"
-                  onClick={handleGoogleSignIn}
+                  onClick={handleGoogleSignUp}
                   disabled={loading || googleLoading}
                   whileHover={{ scale: 1.01 }}
                   whileTap={{ scale: 0.99 }}

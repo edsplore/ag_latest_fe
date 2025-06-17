@@ -6,7 +6,8 @@ import {
   createUserWithEmailAndPassword,
   signOut,
   signInWithPopup,
-  GoogleAuthProvider
+  GoogleAuthProvider,
+  fetchSignInMethodsForEmail
 } from 'firebase/auth';
 import { FirebaseError } from 'firebase/app';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
@@ -80,6 +81,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return unsubscribe;
   }, []);
 
+    const checkExistingSignInMethods = async (email: string): Promise<string[]> => {
+        try {
+            const methods = await fetchSignInMethodsForEmail(auth, email);
+            return methods;
+        } catch (error) {
+            console.error('Error fetching sign-in methods:', error);
+            return [];
+        }
+    };
+
   const signIn = async (email: string, password: string) => {
     try {
       await signInWithEmailAndPassword(auth, email, password);
@@ -150,7 +161,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       let userCredential;
       try {
         // Try popup first
+        console.log('Attempting popup sign-in...');
         userCredential = await signInWithPopup(auth, provider);
+        console.log('Popup sign-in successful');
       } catch (popupError) {
         console.error('Popup failed, error details:', popupError);
         // If popup fails, throw the error to be handled by the calling function
@@ -200,6 +213,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             throw new Error('Invalid API key configuration.');
           case 'auth/network-request-failed':
             throw new Error('Network error. Please check your internet connection and try again.');
+          case 'auth/account-exists-with-different-credential':
+            // Check if user exists with email/password
+            const email = error.customData?.email;
+            if (email) {
+              const methods = await checkExistingSignInMethods(email);
+              if (methods.includes('password')) {
+                throw new Error('This email is already registered with email/password. Please try signing in with your email and password instead.');
+              }
+            }
+            throw new Error('An account already exists with this email using a different sign-in method.');
           default:
             console.error('Unhandled Google sign-in error:', error);
             throw new Error(`Google sign-in failed: ${error.message || 'Unknown error'}`);
