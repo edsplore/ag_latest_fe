@@ -147,16 +147,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         prompt: 'select_account'
       });
 
-      // Log current domain for debugging
-      console.log('Current domain:', window.location.hostname);
-      console.log('Current full URL:', window.location.href);
-
       let userCredential;
       try {
         // Try popup first
-        console.log('Attempting popup sign-in...');
         userCredential = await signInWithPopup(auth, provider);
-        console.log('Popup sign-in successful');
       } catch (popupError) {
         console.error('Popup failed, error details:', popupError);
         // If popup fails, throw the error to be handled by the calling function
