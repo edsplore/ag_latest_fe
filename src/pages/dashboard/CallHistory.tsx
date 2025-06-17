@@ -358,7 +358,13 @@ const CallHistory = () => {
       case "success":
         return (
           <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-400">
-            Successful
+            Positive
+          </span>
+        );
+      case "failed":
+        return (
+          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400">
+            Negative
           </span>
         );
       case "unknown":
@@ -369,8 +375,8 @@ const CallHistory = () => {
         );
       default:
         return (
-          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400">
-            Error
+          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400">
+            Unknown
           </span>
         );
     }
@@ -536,10 +542,10 @@ const CallHistory = () => {
               </div>
             </div>
 
-            {/* Evaluation Filter */}
+            {/* Sentiment Analysis Filter */}
             <div className="flex flex-col space-y-1">
               <label className="text-xs font-medium text-gray-600 dark:text-gray-400">
-                Evaluation
+                Sentiment
               </label>
               <div className="flex items-center space-x-1">
                 <select
@@ -547,9 +553,9 @@ const CallHistory = () => {
                   onChange={(e) => setSelectedEvaluation(e.target.value)}
                   className="px-3 py-1.5 text-sm bg-gray-100 dark:bg-dark-100 text-gray-700 dark:text-gray-300 rounded-lg border border-gray-200 dark:border-dark-100 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                 >
-                  <option value="">All Evaluations</option>
-                  <option value="success">Successful</option>
-                  <option value="failed">Failed</option>
+                  <option value="">All Sentiments</option>
+                  <option value="success">Positive</option>
+                  <option value="failed">Negative</option>
                   <option value="unknown">Unknown</option>
                 </select>
                 {selectedEvaluation && (
@@ -594,7 +600,7 @@ const CallHistory = () => {
               )}
               {selectedEvaluation && (
                 <span className="inline-flex items-center space-x-1 px-2 py-1 text-xs bg-primary-50 text-primary-700 dark:bg-primary-400/10 dark:text-primary-400 rounded-full">
-                  <span>{selectedEvaluation === 'success' ? 'Successful' : selectedEvaluation === 'failed' ? 'Failed' : 'Unknown'}</span>
+                  <span>{selectedEvaluation === 'success' ? 'Positive' : selectedEvaluation === 'failed' ? 'Negative' : 'Unknown'}</span>
                   <button onClick={() => removeFilter('evaluation')} className="hover:text-primary-800 dark:hover:text-primary-300">
                     <X className="w-3 h-3" />
                   </button>
@@ -707,7 +713,7 @@ const CallHistory = () => {
                     Messages
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Evaluation result
+                    Sentiment Analysis
                   </th>
                 </tr>
               </thead>
