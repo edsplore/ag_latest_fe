@@ -102,7 +102,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           case 'auth/user-disabled':
             throw new Error('This account has been disabled');
           case 'auth/user-not-found':
+            // Check if user exists with Google OAuth
+            const methods = await checkExistingSignInMethods(email);
+            if (methods.includes('google.com')) {
+              throw new Error('This email is registered with Google. Please try signing in with Google instead.');
+            }
+            throw new Error('No account found with this email address');
           case 'auth/wrong-password':
+            // Check if user exists with Google OAuth
+            const signInMethods = await checkExistingSignInMethods(email);
+            if (signInMethods.includes('google.com')) {
+              throw new Error('This email is registered with Google. Please try signing in with Google instead.');
+            }
+            throw new Error('Invalid password');
+          case 'auth/invalid-credential':
+            // Check if user exists with Google OAuth
+            const existingMethods = await checkExistingSignInMethods(email);
+            if (existingMethods.includes('google.com')) {
+              throw new Error('This email is registered with Google. Please try signing in with Google instead.');
+            }
             throw new Error('Invalid email or password');
           default:
             throw new Error('An error occurred during sign in');
@@ -132,7 +150,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (error instanceof FirebaseError) {
         switch (error.code) {
           case 'auth/email-already-in-use':
-            throw new Error('This email is already registered');
+            // Check if the existing account uses Google OAuth
+            const methods = await checkExistingSignInMethods(email);
+            if (methods.includes('google.com')) {
+              throw new Error('This email is already registered with Google. Please try signing in with Google instead.');
+            }
+            throw new Error('This email is already registered. Please try signing in instead.');
           case 'auth/invalid-email':
             throw new Error('Invalid email address');
           case 'auth/operation-not-allowed':
