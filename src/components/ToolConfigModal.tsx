@@ -209,7 +209,7 @@ export const ToolConfigModal = ({
           description: "Create a booking in GHL calendar",
           expects_response: true,
           api_schema: {
-            url: `${import.meta.env.VITE_BACKEND_URL}/ghl/book/${user?.uid}`,
+            url: `${import.meta.env.VITE_BACKEND_URL}/ghl/book/`,
             method: 'POST',
             request_body_schema: {
               type: 'object',
@@ -283,7 +283,7 @@ export const ToolConfigModal = ({
           type: "webhook",
           description: "Create a booking in Cal.com calendar",
           api_schema: {
-            url: `${import.meta.env.VITE_BACKEND_URL}/calcom/book/${user?.uid}`,
+            url: `${import.meta.env.VITE_BACKEND_URL}/calcom/book/`,
             method: 'POST',
             request_body_schema: {
               type: 'object',
