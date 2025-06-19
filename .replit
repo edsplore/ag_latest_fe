@@ -1,16 +1,32 @@
 modules = ["nodejs-20", "web"]
-run = "npm run dev"
+run = "npm run preview"
 
 [nix]
 channel = "stable-24_05"
 
 [deployment]
-run = ["sh", "-c", "npm run dev"]
+run = ["sh", "-c", "npm run preview"]
 
 [[ports]]
-localPort = 5173
+localPort = 4173
 externalPort = 80
 
 [[ports]]
 localPort = 5174
 externalPort = 3000
+
+[workflows]
+runButton = "Run Preview"
+
+[[workflows.workflow]]
+name = "Run Preview"
+author = 38908492
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run build"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run preview"
