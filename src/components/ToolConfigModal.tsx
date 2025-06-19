@@ -238,9 +238,9 @@ export const ToolConfigModal = ({
                   type: 'string',
                   description: 'Title or name of the event/appointment to be created in GHL calendar'
                 },
-                assignedUserId: {
-                  type: 'string',
-                  description: 'Unique identifier of the GHL user who will be assigned to this appointment (e.g. CVokAlI8fgw4WYWoCtQz)'
+                timezone: {
+                  type: "string",
+                  description: "Timezone of the event in IANA timezone format (e.g. America/New_York, Europe/London)"
                 },
                 contactInfo: {
                   type: 'object',
@@ -266,7 +266,7 @@ export const ToolConfigModal = ({
                   description: 'Contact information for GHL'
                 }
               },
-              required: ['startTime', 'endTime', 'title', 'assignedUserId', 'contactInfo']
+              required: ['startTime', 'endTime', 'title', 'timezone', 'contactInfo']
             }
           }
         };
@@ -585,7 +585,7 @@ export const ToolConfigModal = ({
   "startTime": "2021-06-23T03:30:00+05:30",
   "endTime": "2021-06-23T04:30:00+05:30",
   "title": "Test Event",
-  "assignedUserId": "CVokAlI8fgw4WYWoCtQz",
+  "timezone": "America/New_York",
   "contactInfo": {
     "phone": "+15551234567",
     "firstName": "John",
