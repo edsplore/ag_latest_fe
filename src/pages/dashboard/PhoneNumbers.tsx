@@ -18,7 +18,8 @@ import {
   Info,
   PhoneOutgoing,
   Link2,
-  Copy
+  Copy,
+  Trash2
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { cn } from '../../lib/utils';
@@ -56,6 +57,7 @@ const PhoneNumbers = () => {
   const [loading, setLoading] = useState(false);
   const [loadingNumbers, setLoadingNumbers] = useState(false);
   const [loadingAgents, setLoadingAgents] = useState(false);
+  const [deletingNumber, setDeletingNumber] = useState<string | null>(null);
   const [phoneNumbers, setPhoneNumbers] = useState<PhoneNumber[]>([]);
   const [agents, setAgents] = useState<Agent[]>([]);
   const [formData, setFormData] = useState({
@@ -294,6 +296,39 @@ const PhoneNumbers = () => {
       }, 2000);
     } catch (error) {
       console.error('Failed to copy link:', error);
+    }
+  };
+
+  const handleDeletePhoneNumber = async (phoneNumberId: string) => {
+    if (!user) return;
+    
+    if (!confirm('Are you sure you want to delete this phone number? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      setDeletingNumber(phoneNumberId);
+      
+      const response = await fetch(
+        `${BACKEND_URL}/phone-numbers/${user.uid}/${phoneNumberId}`,
+        {
+          method: 'DELETE',
+          headers: {
+            Authorization: `Bearer ${await originalUser.getIdToken()}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to delete phone number');
+      }
+
+      await fetchPhoneNumbers();
+    } catch (error) {
+      console.error('Error deleting phone number:', error);
+      setError('Failed to delete phone number. Please try again.');
+    } finally {
+      setDeletingNumber(null);
     }
   };
 
@@ -1097,7 +1132,20 @@ const PhoneNumbers = () => {
                           </button>
                         </>
                       )}
-
+                      <button
+                        onClick={() => handleDeletePhoneNumber(number.phone_number_id)}
+                        disabled={deletingNumber === number.phone_number_id}
+                        className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 bg-red-50 dark:bg-red-500/10 hover:bg-red-100 dark:hover:bg-red-500/20 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {deletingNumber === number.phone_number_id ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="w-4 h-4" />
+                        )}
+                        <span>
+                          {deletingNumber === number.phone_number_id ? 'Deleting...' : 'Delete'}
+                        </span>
+                      </button>
                     </div>
                   </div>
                 </div>
