@@ -2104,9 +2104,11 @@ const AgentDetails = () => {
                             </div>
                             <div className="flex items-center space-x-2">
                               <button
-                                onClick={() => {
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
                                   const updatedTools = editedForm.tools.filter(
-                                    (t, i) => i !== index,
+                                    (_, i) => i !== index,
                                   );
                                   handleChange("tools", updatedTools);
                                 }}
