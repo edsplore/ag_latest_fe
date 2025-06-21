@@ -206,54 +206,6 @@ const CallHistory = () => {
     }
   };
 
-  const fetchConversationDetails = async (conversationId: string) => {
-    if (!user) return;
-
-    try {
-      setLoadingDetails(true);
-      const response = await fetch(
-        `${BACKEND_URL}/get-conversation/${conversationId}`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${await user.getIdToken()}`,
-          },
-          body: JSON.stringify({
-            user_id: user.uid,
-          }),
-        },
-      );
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch conversation details");
-      }
-
-      const data = await response.json();
-      setConversationDetails(data);
-
-      // Create audio element with time update handling
-      if (data.audio) {
-        const newAudio = new Audio(`data:audio/wav;base64,${data.audio}`);
-        newAudio.addEventListener("loadedmetadata", () => {
-          setDuration(newAudio.duration);
-        });
-        newAudio.addEventListener("timeupdate", () => {
-          setCurrentTime(newAudio.currentTime);
-        });
-        newAudio.addEventListener("ended", () => {
-          setIsPlaying(false);
-          setCurrentTime(0);
-        });
-        setAudio(newAudio);
-      }
-    } catch (error) {
-      console.error("Error fetching conversation details:", error);
-    } finally {
-      setLoadingDetails(false);
-    }
-  };
-
   useEffect(() => {
     fetchConversations();
   }, [user]);
@@ -430,6 +382,40 @@ const CallHistory = () => {
   if (loading) {
     return <PageLoader />;
   }
+
+  const fetchCalls = async () => {
+        if (!user) return;
+
+        try {
+            setLoading(true);
+            const response = await fetch(`${BACKEND_URL}/list-conversations`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${await user.getIdToken()}`,
+                },
+                body: JSON.stringify({
+                    user_id: user.uid,
+                }),
+            });
+
+            if (!response.ok) {
+                throw new Error("Failed to fetch conversations");
+            }
+
+            const data = await response.json();
+            setConversations(data.conversations);
+        } catch (error) {
+            console.error("Error fetching conversations:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const effectiveUser = getEffectiveUser();
+    useEffect(() => {
+        fetchCalls();
+    }, [effectiveUser]);
 
   return (
     <div className="space-y-6">
@@ -777,7 +763,7 @@ const CallHistory = () => {
         )}
       </div>
 
-      {/* Conversation Details Sidebar */}
+      {/* Conversation Details Sidebar */
       <AnimatePresence>
         {selectedConversation && (
           <>
