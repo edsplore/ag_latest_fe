@@ -415,7 +415,7 @@ const CallHistory = () => {
     const effectiveUser = getEffectiveUser();
     useEffect(() => {
         fetchCalls();
-    }, [effectiveUser]);
+    }, [user]);
 
   return (
     <div className="space-y-6">
@@ -763,7 +763,7 @@ const CallHistory = () => {
         )}
       </div>
 
-      {/* Conversation Details Sidebar */
+      {/* Conversation Details Sidebar */}
       <AnimatePresence>
         {selectedConversation && (
           <>
@@ -1035,7 +1035,6 @@ const CallHistory = () => {
           </>
         )}
       </AnimatePresence>
-      }
     </div>
   );
 };
