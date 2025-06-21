@@ -90,18 +90,25 @@ const DashboardHome = () => {
         const data = await response.json();
         
         // Update stats if provided
-        if (data.stats) {
+        if (data.statistics) {
           setStats({
-            totalAgents: data.stats.totalAgents || 0,
-            activeCalls: data.stats.activeCalls || 0,
-            avgCallDuration: data.stats.avgCallDuration || '0m 0s',
-            messagesToday: data.stats.messagesToday || 0
+            totalAgents: data.statistics.agents_count || 0,
+            activeCalls: data.statistics.phone_numbers_count || 0,
+            avgCallDuration: data.statistics.knowledge_bases_count?.toString() || '0',
+            messagesToday: data.statistics.total_calls || 0
           });
         }
         
-        // Update recent activity if provided
-        if (data.recentActivity && Array.isArray(data.recentActivity)) {
-          setRecentActivity(data.recentActivity.slice(0, 5)); // Show only last 5 activities
+        // Transform recent_calls to recent activity format
+        if (data.recent_calls && Array.isArray(data.recent_calls)) {
+          const transformedActivity = data.recent_calls.map((call: any) => ({
+            type: 'call',
+            description: `Call ${call.call_successful === 'unknown' ? 'attempted' : call.call_successful}`,
+            time: call.start_time ? new Date(call.start_time).toLocaleString() : 'Recently',
+            duration: call.duration_secs > 0 ? `${Math.floor(call.duration_secs / 60)}m ${call.duration_secs % 60}s` : 'N/A',
+            status: call.call_successful === 'unknown' ? 'attempted' : call.call_successful
+          }));
+          setRecentActivity(transformedActivity.slice(0, 5)); // Show only last 5 activities
         }
       }
     } catch (error) {
@@ -121,27 +128,27 @@ const DashboardHome = () => {
       color: 'primary'
     },
     {
-      title: 'Active Calls',
-      value: stats.activeCalls.toString(),
-      change: '+5',
+      title: 'Phone Numbers',
+      value: stats.activeCalls.toString(), // Will be updated when we get phone_numbers_count
+      change: '+1',
       trend: 'up',
-      icon: PhoneCall,
+      icon: Phone,
       color: 'indigo'
     },
     {
-      title: 'Avg. Call Duration',
-      value: stats.avgCallDuration,
-      change: '-12s',
-      trend: 'down',
-      icon: Clock,
+      title: 'Knowledge Bases',
+      value: stats.avgCallDuration === '0m 0s' ? '0' : stats.avgCallDuration,
+      change: '+0',
+      trend: 'up',
+      icon: Database,
       color: 'rose'
     },
     {
-      title: 'Messages Today',
+      title: 'Total Calls',
       value: stats.messagesToday.toLocaleString(),
       change: '+18%',
       trend: 'up',
-      icon: MessageSquare,
+      icon: PhoneCall,
       color: 'amber'
     }
   ];
