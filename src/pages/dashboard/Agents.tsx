@@ -246,7 +246,7 @@ const Agents = () => {
 
   useEffect(() => {
     fetchAgents();
-  }, [effectiveUser]);
+  }, [user]);
 
   // Update model type when language changes to ensure compatibility
   useEffect(() => {
