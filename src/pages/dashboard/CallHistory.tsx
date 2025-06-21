@@ -23,6 +23,8 @@ import {
 import { useAuth } from "../../contexts/AuthContext";
 import { Loader, PageLoader } from "../../components/Loader";
 
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
+
 interface Conversation {
   agent_id: string;
   agent_name: string;
@@ -391,9 +393,14 @@ const CallHistory = () => {
       const response = await fetch(
         `${BACKEND_URL}/get-conversation/${conversationId}`,
         {
+          method: "POST",
           headers: {
+            "Content-Type": "application/json",
             Authorization: `Bearer ${await user.getIdToken()}`,
           },
+          body: JSON.stringify({
+            user_id: user.uid,
+          }),
         },
       );
 
