@@ -1,0 +1,61 @@
+{
+    "user_id": "gWVMPPKCOHaqXUyZe57whrJw7933",
+    "statistics": {
+        "agents_count": 1,
+        "phone_numbers_count": 2,
+        "knowledge_bases_count": 0,
+        "total_calls": 5
+    },
+    "recent_calls": [
+        {
+            "conversation_id": "conv_01jy91f6tre31936mrnr8j8852",
+            "agent_id": "agent_01jxa5j2tcev3adrwp7jnrz8ew",
+            "start_time": null,
+            "duration_secs": 0,
+            "cost": 0,
+            "termination_reason": "unknown",
+            "call_successful": "unknown",
+            "transcript_summary": null
+        },
+        {
+            "conversation_id": "conv_01jy91044hfnj87y11vy4kjm9x",
+            "agent_id": "agent_01jxa5j2tcev3adrwp7jnrz8ew",
+            "start_time": null,
+            "duration_secs": 0,
+            "cost": 0,
+            "termination_reason": "unknown",
+            "call_successful": "unknown",
+            "transcript_summary": null
+        },
+        {
+            "conversation_id": "conv_01jy90z5mtfdg973q8w8x6hbak",
+            "agent_id": "agent_01jxa5j2tcev3adrwp7jnrz8ew",
+            "start_time": null,
+            "duration_secs": 0,
+            "cost": 0,
+            "termination_reason": "unknown",
+            "call_successful": "unknown",
+            "transcript_summary": null
+        },
+        {
+            "conversation_id": "conv_01jy6qzhvnffp92nt295wacxg5",
+            "agent_id": "agent_01jxa5j2tcev3adrwp7jnrz8ew",
+            "start_time": null,
+            "duration_secs": 0,
+            "cost": 0,
+            "termination_reason": "unknown",
+            "call_successful": "unknown",
+            "transcript_summary": null
+        },
+        {
+            "conversation_id": "conv_01jy6jqrqgfj28z8v838xjwv8a",
+            "agent_id": "agent_01jxa5j2tcev3adrwp7jnrz8ew",
+            "start_time": null,
+            "duration_secs": 0,
+            "cost": 0,
+            "termination_reason": "unknown",
+            "call_successful": "unknown",
+            "transcript_summary": null
+        }
+    ]
+}
