@@ -389,7 +389,7 @@ const CallHistory = () => {
     try {
       setLoadingDetails(true);
       const response = await fetch(
-        `${BACKEND_URL}/conversation-details/${conversationId}`,
+        `${BACKEND_URL}/get-conversation/${conversationId}`,
         {
           headers: {
             Authorization: `Bearer ${await user.getIdToken()}`,
