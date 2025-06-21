@@ -4,9 +4,7 @@ import AdminDashboard from './dashboard/AdminDashboard';
 import UserDashboard from './dashboard/UserDashboard';
 
 const Dashboard = () => {
-  const { getEffectiveUser, getEffectiveUserData, loading, isAdmin } = useAuth();
-  const user = getEffectiveUser();
-  const userData = getEffectiveUserData();
+  const { isAdmin } = useAuth();
 
   return isAdmin() ? <AdminDashboard /> : <UserDashboard />;
 };
