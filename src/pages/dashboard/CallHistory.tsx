@@ -1035,6 +1035,7 @@ const CallHistory = () => {
           </>
         )}
       </AnimatePresence>
+      }
     </div>
   );
 };
