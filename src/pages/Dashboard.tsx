@@ -27,7 +27,8 @@ import UserManagement from './dashboard/UserManagement';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useState, useEffect } from 'react';
-import { BACKEND_URL } from '../lib/constants';
+
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL
 
 const quickActions = [
   {
