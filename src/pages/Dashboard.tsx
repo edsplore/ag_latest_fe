@@ -28,7 +28,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useState, useEffect } from 'react';
 
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 
 const quickActions = [
   {
@@ -76,9 +76,9 @@ const DashboardHome = () => {
     try {
       setLoading(true);
       
-      // Fetch user stats
-      const statsResponse = await fetch(
-        `${BACKEND_URL}/dashboard/stats/${effectiveUser.uid}`,
+      // Fetch dashboard data from single endpoint
+      const response = await fetch(
+        `${BACKEND_URL}/dashboard/${effectiveUser.uid}`,
         {
           headers: {
             Authorization: `Bearer ${await effectiveUser.getIdToken()}`,
@@ -86,24 +86,23 @@ const DashboardHome = () => {
         }
       );
 
-      if (statsResponse.ok) {
-        const statsData = await statsResponse.json();
-        setStats(statsData);
-      }
-
-      // Fetch recent activity
-      const activityResponse = await fetch(
-        `${BACKEND_URL}/dashboard/activity/${effectiveUser.uid}`,
-        {
-          headers: {
-            Authorization: `Bearer ${await effectiveUser.getIdToken()}`,
-          },
+      if (response.ok) {
+        const data = await response.json();
+        
+        // Update stats if provided
+        if (data.stats) {
+          setStats({
+            totalAgents: data.stats.totalAgents || 0,
+            activeCalls: data.stats.activeCalls || 0,
+            avgCallDuration: data.stats.avgCallDuration || '0m 0s',
+            messagesToday: data.stats.messagesToday || 0
+          });
         }
-      );
-
-      if (activityResponse.ok) {
-        const activityData = await activityResponse.json();
-        setRecentActivity(activityData.slice(0, 5)); // Show only last 5 activities
+        
+        // Update recent activity if provided
+        if (data.recentActivity && Array.isArray(data.recentActivity)) {
+          setRecentActivity(data.recentActivity.slice(0, 5)); // Show only last 5 activities
+        }
       }
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
