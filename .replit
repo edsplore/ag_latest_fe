@@ -12,11 +12,15 @@ localPort = 4173
 externalPort = 80
 
 [[ports]]
+localPort = 5173
+externalPort = 5173
+
+[[ports]]
 localPort = 5174
 externalPort = 3000
 
 [workflows]
-runButton = "Run Preview"
+runButton = "Run Dev"
 
 [[workflows.workflow]]
 name = "Run Preview"
@@ -30,3 +34,12 @@ args = "npm run build"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "npm run preview"
+
+[[workflows.workflow]]
+name = "Run Dev"
+author = 38908492
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run dev"

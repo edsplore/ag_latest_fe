@@ -1912,57 +1912,8 @@ const AgentDetails = () => {
                         }}
                       />
                     )}
-
-                    {/* Dynamic Variable Placeholders */}
-                    {Object.keys(dynamicVariablePlaceholders).length > 0 && (
-                        <div className="space-y-3">
-                          <p className="text-sm text-gray-500 dark:text-gray-400">
-                            Define values for the dynamic variables found in your first message and prompt.
-                          </p>
-                          {Object.keys(dynamicVariablePlaceholders).map((varName) => (
-                            <div key={varName} className="space-y-2">
-                              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                {varName} <span className="text-gray-500 dark:text-gray-400 font-normal">(from {`{{${varName}}}`})</span>
-                              </label>
-                              <input
-                                type="text"
-                                value={dynamicVariablePlaceholders[varName]}
-                                onChange={(e) => {
-                                  setDynamicVariablePlaceholders(prev => ({
-                                    ...prev,
-                                    [varName]: e.target.value
-                                  }));
-                                  setHasChanges(true);
-                                }}
-                                className="input text-sm"
-                                placeholder={`Enter value for ${varName}`}
-                              />
-                            </div>
-                          ))}
-                        </div>
-                    )}
                   </div>
                 )}
-              </div>
-
-              {/* Prompt Section */}
-              <div className="space-y-4">
-                <div className="flex items-center space-x-2">
-                  <Sparkles className="w-5 h-5 text-primary dark:text-primary-400" />
-                  <h3 className="text-lg font-heading font-medium text-gray-900 dark:text-white">
-                    Prompt
-                  </h3>
-                </div>
-                <textarea
-                  value={editedForm.prompt}
-                  onChange={(e) => handleChange("prompt", e.target.value)}
-                  rows={6}
-                  className="input"
-                  placeholder="Enter the agent's behavior and instructions..."
-                />
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  You can use dynamic variables like {`{{variable_name}}`} in your prompt. These will be replaced with actual values during conversations.
-                </p>
               </div>
 
               {/* Dynamic Variable Placeholders Section */}
@@ -2001,6 +1952,26 @@ const AgentDetails = () => {
                   </div>
                 </div>
               )}
+
+              {/* Prompt Section */}
+              <div className="space-y-4">
+                <div className="flex items-center space-x-2">
+                  <Sparkles className="w-5 h-5 text-primary dark:text-primary-400" />
+                  <h3 className="text-lg font-heading font-medium text-gray-900 dark:text-white">
+                    Prompt
+                  </h3>
+                </div>
+                <textarea
+                  value={editedForm.prompt}
+                  onChange={(e) => handleChange("prompt", e.target.value)}
+                  rows={6}
+                  className="input"
+                  placeholder="Enter the agent's behavior and instructions..."
+                />
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  You can use dynamic variables like {`{{variable_name}}`} in your prompt. These will be replaced with actual values during conversations.
+                </p>
+              </div>
 
               {/* Dynamic Variables Section */}
               <div className="space-y-4">
