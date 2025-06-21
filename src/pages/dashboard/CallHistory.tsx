@@ -415,7 +415,7 @@ const CallHistory = () => {
     const effectiveUser = getEffectiveUser();
     useEffect(() => {
         fetchCalls();
-    }, [user]);
+    }, []);
 
   return (
     <div className="space-y-6">
