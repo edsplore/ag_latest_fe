@@ -379,43 +379,54 @@ const CallHistory = () => {
       }
     });
 
+  const fetchConversationDetails = async (conversationId: string) => {
+    if (!user) return;
+
+    try {
+      setLoadingDetails(true);
+      const response = await fetch(`${BACKEND_URL}/get-conversation-analysis`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${await user.getIdToken()}`,
+        },
+        body: JSON.stringify({
+          user_id: user.uid,
+          conversation_id: conversationId,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch conversation details");
+      }
+
+      const data = await response.json();
+      setConversationDetails(data);
+
+      // Set up audio if available
+      if (data.audio) {
+        const audioElement = new Audio(`data:audio/wav;base64,${data.audio}`);
+        audioElement.addEventListener("loadedmetadata", () => {
+          setDuration(audioElement.duration);
+        });
+        audioElement.addEventListener("timeupdate", () => {
+          setCurrentTime(audioElement.currentTime);
+        });
+        audioElement.addEventListener("ended", () => {
+          setIsPlaying(false);
+        });
+        setAudio(audioElement);
+      }
+    } catch (error) {
+      console.error("Error fetching conversation details:", error);
+    } finally {
+      setLoadingDetails(false);
+    }
+  };
+
   if (loading) {
     return <PageLoader />;
   }
-
-  const fetchCalls = async () => {
-        if (!user) return;
-
-        try {
-            setLoading(true);
-            const response = await fetch(`${BACKEND_URL}/list-conversations`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${await user.getIdToken()}`,
-                },
-                body: JSON.stringify({
-                    user_id: user.uid,
-                }),
-            });
-
-            if (!response.ok) {
-                throw new Error("Failed to fetch conversations");
-            }
-
-            const data = await response.json();
-            setConversations(data.conversations);
-        } catch (error) {
-            console.error("Error fetching conversations:", error);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const effectiveUser = getEffectiveUser();
-    useEffect(() => {
-        fetchCalls();
-    }, [effectiveUser]);
 
   return (
     <div className="space-y-6">
