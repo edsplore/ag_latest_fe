@@ -5,7 +5,8 @@ run = "npm run preview"
 channel = "stable-24_05"
 
 [deployment]
-run = ["sh", "-c", "npm run preview"]
+run = ["sh", "-c", "serve -s dist -l 4173"]
+build = ["sh", "-c", "npm run build"]
 
 [[ports]]
 localPort = 4173
@@ -20,7 +21,7 @@ localPort = 5174
 externalPort = 3000
 
 [workflows]
-runButton = "Run Dev"
+runButton = "Start Production"
 
 [[workflows.workflow]]
 name = "Run Preview"
@@ -43,3 +44,16 @@ mode = "sequential"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "npm run dev"
+
+[[workflows.workflow]]
+name = "Start Production"
+author = 38908492
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run build"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run preview -- --host 0.0.0.0 --port 4173"
