@@ -319,6 +319,8 @@ const AgentDetails = () => {
   const [llmUsageData, setLlmUsageData] = useState<any>(null);
   const [loadingLLMUsage, setLoadingLLMUsage] = useState(false);
   const [llmUsageError, setLlmUsageError] = useState("");
+  const [userPromptLength, setUserPromptLength] = useState<string>("");
+  const [userNumberOfPages, setUserNumberOfPages] = useState<string>("");
 
 
   // Fetch agent details
@@ -853,18 +855,16 @@ const AgentDetails = () => {
   };
 
   // Calculate LLM Usage
-  const calculateLLMUsage = async () => {
+  const calculateLLMUsage = async (userPromptLength?: number, userNumberOfPages?: number) => {
     if (!user) return;
 
     try {
       setLoadingLLMUsage(true);
       setLlmUsageError("");
 
-      // Calculate prompt length (approximate)
-      const promptLength = editedForm.prompt.length;
-      
-      // Calculate number of pages from knowledge base
-      const numberOfPages = editedForm.knowledge_base.length * 10; // Approximate pages per document
+      // Use user input or default values
+      const promptLength = userPromptLength ?? editedForm.prompt.length;
+      const numberOfPages = userNumberOfPages ?? (editedForm.knowledge_base.length * 10);
 
       const response = await fetch(`${BACKEND_URL}/llm-usage/calculate`, {
         method: "POST",
@@ -874,7 +874,7 @@ const AgentDetails = () => {
         body: JSON.stringify({
           prompt_length: promptLength,
           number_of_pages: numberOfPages,
-          rag_enabled: editedForm.knowledge_base.length > 0
+          rag_enabled: false // Always false as requested
         }),
       });
 
@@ -1578,7 +1578,13 @@ const AgentDetails = () => {
               {/* Calculate LLM Usage Button - placed above ASR Keywords */}
               <div className="flex justify-end mb-4">
                 <button
-                  onClick={() => setShowLLMUsageModal(true)}
+                  onClick={() => {
+                    setShowLLMUsageModal(true);
+                    setUserPromptLength("");
+                    setUserNumberOfPages("");
+                    setLlmUsageData(null);
+                    setLlmUsageError("");
+                  }}
                   className="flex items-center space-x-2 px-4 py-2 text-sm font-lato font-semibold text-white bg-primary hover:bg-primary-600 dark:bg-primary-400 dark:hover:bg-primary-500 rounded-lg transition-colors"
                 >
                   <MessageSquare className="w-4 h-4" />
@@ -2378,23 +2384,59 @@ const AgentDetails = () => {
                     </button>
                   </div>
 
-                  {/* Configuration Summary */}
-                  <div className="mb-6 p-4 bg-gray-50 dark:bg-dark-100 rounded-lg">
-                    <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-2">
-                      Current Configuration
-                    </h3>
-                    <div className="space-y-1 text-sm text-gray-600 dark:text-gray-400">
-                      <p><strong>Prompt Length:</strong> {editedForm.prompt.length} characters</p>
-                      <p><strong>Knowledge Base Documents:</strong> {editedForm.knowledge_base.length}</p>
-                      <p><strong>RAG Enabled:</strong> {editedForm.knowledge_base.length > 0 ? 'Yes' : 'No'}</p>
-                      <p><strong>Current Model:</strong> {editedForm.llm}</p>
+                  {/* Input Fields */}
+                  <div className="mb-6 space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label className="block text-sm font-medium text-gray-900 dark:text-white">
+                          Prompt Length (characters)
+                        </label>
+                        <input
+                          type="number"
+                          value={userPromptLength}
+                          onChange={(e) => setUserPromptLength(e.target.value)}
+                          placeholder={editedForm.prompt.length.toString()}
+                          className="input"
+                          min="0"
+                        />
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          Current: {editedForm.prompt.length} characters
+                        </p>
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="block text-sm font-medium text-gray-900 dark:text-white">
+                          Number of Pages
+                        </label>
+                        <input
+                          type="number"
+                          value={userNumberOfPages}
+                          onChange={(e) => setUserNumberOfPages(e.target.value)}
+                          placeholder={(editedForm.knowledge_base.length * 10).toString()}
+                          className="input"
+                          min="0"
+                        />
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          Current: {editedForm.knowledge_base.length * 10} pages (estimated)
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="p-3 bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20 rounded-lg">
+                      <p className="text-sm text-blue-800 dark:text-blue-200">
+                        <strong>Current Model:</strong> {editedForm.llm}
+                      </p>
                     </div>
                   </div>
 
                   {/* Calculate Button */}
                   <div className="mb-6">
                     <button
-                      onClick={calculateLLMUsage}
+                      onClick={() => {
+                        const promptLength = userPromptLength ? parseInt(userPromptLength) : undefined;
+                        const numberOfPages = userNumberOfPages ? parseInt(userNumberOfPages) : undefined;
+                        calculateLLMUsage(promptLength, numberOfPages);
+                      }}
                       disabled={loadingLLMUsage}
                       className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-primary text-white rounded-lg hover:bg-primary-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
