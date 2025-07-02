@@ -866,11 +866,10 @@ const AgentDetails = () => {
       // Calculate number of pages from knowledge base
       const numberOfPages = editedForm.knowledge_base.length * 10; // Approximate pages per document
 
-      const response = await fetch("https://api.elevenlabs.io/v1/convai/llm-usage/calculate", {
+      const response = await fetch(`${BACKEND_URL}/llm-usage/calculate`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "xi-api-key": "xi-api-key", // This will need to be replaced with actual API key
         },
         body: JSON.stringify({
           prompt_length: promptLength,
