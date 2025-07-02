@@ -149,6 +149,13 @@ interface CustomLlm {
   };
 }
 
+interface LLMUsageResponse {
+  llm_prices: Array<{
+    llm: string;
+    price_per_minute: number;
+  }>;
+}
+
 interface EditForm {
   name: string;
   prompt: string;
@@ -242,6 +249,7 @@ const AgentDetails = () => {
   const [showAdvancedVoiceSettings, setShowAdvancedVoiceSettings] = useState(false);
   const [showAdvancedConversationSettings, setShowAdvancedConversationSettings] = useState(false);
   const [showPrivacySettings, setShowPrivacySettings] = useState(false);
+  const [showLLMUsageModal, setShowLLMUsageModal] = useState(false);
 
   const [editingVarName, setEditingVarName] = useState<string | null>(null);
   const [editingVarValue, setEditingVarValue] = useState<string>("");
@@ -308,6 +316,9 @@ const AgentDetails = () => {
   const [generatingSecret, setGeneratingSecret] = useState(false);
   const [updatingSecret, setUpdatingSecret] = useState(false);
   const [dynamicVariablePlaceholders, setDynamicVariablePlaceholders] = useState<{[key: string]: string}>({});
+  const [llmUsageData, setLlmUsageData] = useState<any>(null);
+  const [loadingLLMUsage, setLoadingLLMUsage] = useState(false);
+  const [llmUsageError, setLlmUsageError] = useState("");
 
 
   // Fetch agent details
@@ -838,6 +849,48 @@ const AgentDetails = () => {
       setError(err instanceof Error ? err.message : "Failed to update secret. Please try again.");
     } finally {
       setGeneratingSecret(false);
+    }
+  };
+
+  // Calculate LLM Usage
+  const calculateLLMUsage = async () => {
+    if (!user) return;
+
+    try {
+      setLoadingLLMUsage(true);
+      setLlmUsageError("");
+
+      // Calculate prompt length (approximate)
+      const promptLength = editedForm.prompt.length;
+      
+      // Calculate number of pages from knowledge base
+      const numberOfPages = editedForm.knowledge_base.length * 10; // Approximate pages per document
+
+      const response = await fetch("https://api.elevenlabs.io/v1/convai/llm-usage/calculate", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "xi-api-key": "xi-api-key", // This will need to be replaced with actual API key
+        },
+        body: JSON.stringify({
+          prompt_length: promptLength,
+          number_of_pages: numberOfPages,
+          rag_enabled: editedForm.knowledge_base.length > 0
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to calculate LLM usage");
+      }
+
+      const data: LLMUsageResponse = await response.json();
+      setLlmUsageData(data);
+
+    } catch (err) {
+      console.error("Error calculating LLM usage:", err);
+      setLlmUsageError(err instanceof Error ? err.message : "Failed to calculate LLM usage. Please try again.");
+    } finally {
+      setLoadingLLMUsage(false);
     }
   };
 
@@ -1521,6 +1574,30 @@ const AgentDetails = () => {
                     </div>
                   </div>
                 )}
+              </div>
+
+              {/* Calculate LLM Usage Section */}
+              <div className="space-y-4 mt-8">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <MessageSquare className="w-5 h-5 text-primary dark:text-primary-400" />
+                    <h3 className="text-lg font-heading font-medium text-gray-900 dark:text-white">
+                      LLM Usage Calculator
+                    </h3>
+                  </div>
+                  <button
+                    onClick={() => setShowLLMUsageModal(true)}
+                    className="flex items-center space-x-2 px-4 py-2 text-sm font-lato font-semibold text-white bg-primary hover:bg-primary-600 dark:bg-primary-400 dark:hover:bg-primary-500 rounded-lg transition-colors"
+                  >
+                    <MessageSquare className="w-4 h-4" />
+                    <span>Calculate LLM Usage</span>
+                  </button>
+                </div>
+                <div className="pl-4 border-l-2 border-primary/20 dark:border-primary/30">
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Calculate the expected cost for using different LLM models based on your agent's configuration.
+                  </p>
+                </div>
               </div>
 
               {/* ASR Keywords Section */}
@@ -2283,6 +2360,143 @@ const AgentDetails = () => {
           agentId={agentId}
         />
       )}
+
+      {/* LLM Usage Modal */}
+      <AnimatePresence>
+        {showLLMUsageModal && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
+              onClick={() => setShowLLMUsageModal(false)}
+            >
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="bg-white dark:bg-dark-200 rounded-xl shadow-xl max-w-2xl w-full max-h-[80vh] overflow-y-auto"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="p-6">
+                  <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-xl font-heading font-bold text-gray-900 dark:text-white">
+                      LLM Usage Calculator
+                    </h2>
+                    <button
+                      onClick={() => setShowLLMUsageModal(false)}
+                      className="p-2 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-dark-100 transition-colors"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+
+                  {/* Configuration Summary */}
+                  <div className="mb-6 p-4 bg-gray-50 dark:bg-dark-100 rounded-lg">
+                    <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-2">
+                      Current Configuration
+                    </h3>
+                    <div className="space-y-1 text-sm text-gray-600 dark:text-gray-400">
+                      <p><strong>Prompt Length:</strong> {editedForm.prompt.length} characters</p>
+                      <p><strong>Knowledge Base Documents:</strong> {editedForm.knowledge_base.length}</p>
+                      <p><strong>RAG Enabled:</strong> {editedForm.knowledge_base.length > 0 ? 'Yes' : 'No'}</p>
+                      <p><strong>Current Model:</strong> {editedForm.llm}</p>
+                    </div>
+                  </div>
+
+                  {/* Calculate Button */}
+                  <div className="mb-6">
+                    <button
+                      onClick={calculateLLMUsage}
+                      disabled={loadingLLMUsage}
+                      className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-primary text-white rounded-lg hover:bg-primary-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      {loadingLLMUsage ? (
+                        <>
+                          <Loader />
+                          <span>Calculating...</span>
+                        </>
+                      ) : (
+                        <>
+                          <MessageSquare className="w-4 h-4" />
+                          <span>Calculate Usage & Costs</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+
+                  {/* Error Display */}
+                  {llmUsageError && (
+                    <div className="mb-6 p-4 bg-red-50 dark:bg-red-500/10 border border-red-100 dark:border-red-500/20 rounded-lg">
+                      <div className="flex items-start space-x-3">
+                        <AlertCircle className="w-5 h-5 text-red-500 dark:text-red-400 mt-0.5" />
+                        <div className="flex-1">
+                          <h3 className="text-sm font-medium text-red-800 dark:text-red-200">
+                            Error
+                          </h3>
+                          <p className="text-sm text-red-700 dark:text-red-300 mt-1">
+                            {llmUsageError}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Results Display */}
+                  {llmUsageData && (
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-heading font-medium text-gray-900 dark:text-white">
+                        Estimated Costs Per Minute
+                      </h3>
+                      <div className="space-y-3">
+                        {llmUsageData.llm_prices.map((item: any, index: number) => (
+                          <div
+                            key={index}
+                            className={`p-4 rounded-lg border-2 ${
+                              item.llm === editedForm.llm
+                                ? 'border-primary bg-primary-50/50 dark:border-primary-400 dark:bg-primary-400/10'
+                                : 'border-gray-200 dark:border-dark-100 bg-white dark:bg-dark-100'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center space-x-3">
+                                <div className={`w-3 h-3 rounded-full ${
+                                  item.llm === editedForm.llm
+                                    ? 'bg-primary'
+                                    : 'bg-gray-400 dark:bg-gray-500'
+                                }`} />
+                                <span className="font-medium text-gray-900 dark:text-white">
+                                  {item.llm}
+                                  {item.llm === editedForm.llm && (
+                                    <span className="ml-2 text-xs font-lato font-semibold text-primary dark:text-primary-400">
+                                      (Current)
+                                    </span>
+                                  )}
+                                </span>
+                              </div>
+                              <span className="text-lg font-heading font-bold text-gray-900 dark:text-white">
+                                ${item.price_per_minute.toFixed(4)}/min
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      
+                      <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20 rounded-lg">
+                        <p className="text-sm text-blue-800 dark:text-blue-200">
+                          <strong>Note:</strong> These are estimated costs based on your current configuration. 
+                          Actual costs may vary depending on conversation length and complexity.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
 
       {/* Sticky Save/Cancel Buttons */}
       <AnimatePresence>
