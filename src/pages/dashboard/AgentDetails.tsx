@@ -1575,28 +1575,15 @@ const AgentDetails = () => {
                 )}
               </div>
 
-              {/* Calculate LLM Usage Section */}
-              <div className="space-y-4 mt-8">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <MessageSquare className="w-5 h-5 text-primary dark:text-primary-400" />
-                    <h3 className="text-lg font-heading font-medium text-gray-900 dark:text-white">
-                      LLM Usage Calculator
-                    </h3>
-                  </div>
-                  <button
-                    onClick={() => setShowLLMUsageModal(true)}
-                    className="flex items-center space-x-2 px-4 py-2 text-sm font-lato font-semibold text-white bg-primary hover:bg-primary-600 dark:bg-primary-400 dark:hover:bg-primary-500 rounded-lg transition-colors"
-                  >
-                    <MessageSquare className="w-4 h-4" />
-                    <span>Calculate LLM Usage</span>
-                  </button>
-                </div>
-                <div className="pl-4 border-l-2 border-primary/20 dark:border-primary/30">
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    Calculate the expected cost for using different LLM models based on your agent's configuration.
-                  </p>
-                </div>
+              {/* Calculate LLM Usage Button - placed above ASR Keywords */}
+              <div className="flex justify-end mb-4">
+                <button
+                  onClick={() => setShowLLMUsageModal(true)}
+                  className="flex items-center space-x-2 px-4 py-2 text-sm font-lato font-semibold text-white bg-primary hover:bg-primary-600 dark:bg-primary-400 dark:hover:bg-primary-500 rounded-lg transition-colors"
+                >
+                  <MessageSquare className="w-4 h-4" />
+                  <span>Calculate LLM Usage</span>
+                </button>
               </div>
 
               {/* ASR Keywords Section */}
