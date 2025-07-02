@@ -835,7 +835,7 @@ const CallHistory = () => {
                 ) : conversationDetails ? (
                   <div className="p-6 space-y-6">
                     {/* Stats Grid */}
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-3 gap-4">
                       <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -870,6 +870,26 @@ const CallHistory = () => {
                         </div>
                         <p className="text-2xl font-heading font-bold text-primary dark:text-primary-400">
                           {conversationDetails.conversation.transcript.length}
+                        </p>
+                      </motion.div>
+
+                      <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.3 }}
+                        className="p-4 rounded-xl bg-gradient-to-br from-primary/5 to-primary/10 dark:from-primary/10 dark:to-primary/5"
+                      >
+                        <div className="flex items-center space-x-2 mb-2">
+                          <BarChart className="w-4 h-4 text-primary dark:text-primary-400" />
+                          <span className="text-xs font-medium text-gray-600 dark:text-gray-300">
+                            Cost
+                          </span>
+                        </div>
+                        <p className="text-2xl font-heading font-bold text-primary dark:text-primary-400">
+                          {conversationDetails.conversation.metadata.cost !== undefined 
+                            ? `$${(conversationDetails.conversation.metadata.cost / 100).toFixed(4)}`
+                            : 'N/A'
+                          }
                         </p>
                       </motion.div>
                     </div>
