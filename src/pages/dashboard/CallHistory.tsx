@@ -23,8 +23,6 @@ import {
 import { useAuth } from "../../contexts/AuthContext";
 import { Loader, PageLoader } from "../../components/Loader";
 
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
-
 interface Conversation {
   agent_id: string;
   agent_name: string;

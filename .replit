@@ -21,7 +21,6 @@ localPort = 5174
 externalPort = 3000
 
 [workflows]
-runButton = "Start Production"
 
 [[workflows.workflow]]
 name = "Run Preview"
