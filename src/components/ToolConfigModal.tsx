@@ -346,14 +346,18 @@ export const ToolConfigModal = ({
 
       if (isCreating) {
 
-        console.log("Creating new tool:")
+        console.log("Creating new tool:", updatedTool);
         // Create new tool via API
         const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/tools/create`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            Authorization: `Bearer ${await originalUser?.getIdToken()}`,
           },
-          body: JSON.stringify(updatedTool),
+          body: JSON.stringify({
+            ...updatedTool,
+            user_id: originalUser?.uid
+          }),
         });
 
         if (!response.ok) {
@@ -373,6 +377,7 @@ export const ToolConfigModal = ({
           method: 'PATCH',
           headers: {
             'Content-Type': 'application/json',
+            Authorization: `Bearer ${await originalUser?.getIdToken()}`,
           },
           body: JSON.stringify(updatedTool),
         });

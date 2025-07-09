@@ -735,7 +735,7 @@ const AgentDetails = () => {
 
   // Save a tool (either new or edited)
   const handleToolSave = (updatedTool: Tool) => {
-    console.log("handleToolSave called with:")
+    console.log("handleToolSave called with:", updatedTool);
     if (isCreatingTool) {
       // Add tool_id to editedForm.tool_ids
       setEditedForm((prev) => ({
@@ -746,10 +746,10 @@ const AgentDetails = () => {
       setToolsForDisplay((prev) => [...prev, updatedTool]);
       setIsCreatingTool(false);
     } else {
-      // Update toolsForDisplay
+      // Update toolsForDisplay - safely check for tool_id existence
       setToolsForDisplay((prev) =>
         prev.map((tool) =>
-          tool.tool_id === updatedTool.tool_id ? updatedTool : tool
+          tool.tool_id && updatedTool.tool_id && tool.tool_id === updatedTool.tool_id ? updatedTool : tool
         )
       );
     }
@@ -758,10 +758,10 @@ const AgentDetails = () => {
   };
 
   const handleToolUpdate = (updatedTool: Tool) => {
-    // Update toolsForDisplay
+    // Update toolsForDisplay - safely check for tool_id existence
     setToolsForDisplay((prev) =>
       prev.map((tool) =>
-        tool.tool_id === updatedTool.tool_id ? updatedTool : tool
+        tool.tool_id && updatedTool.tool_id && tool.tool_id === updatedTool.tool_id ? updatedTool : tool
       )
     );
     setHasChanges(true);
