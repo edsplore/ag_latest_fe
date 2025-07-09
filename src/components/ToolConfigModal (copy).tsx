@@ -351,7 +351,6 @@ export const ToolConfigModal = ({
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${await originalUser.getIdToken()}`,
           },
           body: JSON.stringify(updatedTool),
         });
@@ -373,7 +372,6 @@ export const ToolConfigModal = ({
           method: 'PATCH',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${await originalUser.getIdToken()}`,
           },
           body: JSON.stringify(updatedTool),
         });
