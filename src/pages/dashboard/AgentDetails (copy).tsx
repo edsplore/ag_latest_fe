@@ -717,7 +717,7 @@ const AgentDetails = () => {
       setIsCreatingTool(false);
     } else {
       const updatedTools = editedForm.tools.map((tool) =>
-        tool.name === selectedTool?.name
+        tool.tool_id === selectedTool?.tool_id
           ? { ...updatedTool, method: "POST" }
           : tool,
       );
@@ -732,7 +732,7 @@ const AgentDetails = () => {
 
   const handleToolUpdate = (updatedTool: any) => {
     const updatedTools = editedForm.tools.map((tool) =>
-      tool.name === updatedTool.name ? updatedTool : tool,
+      tool.tool_id === updatedTool.tool_id ? updatedTool : tool,
     );
     handleChange("tools", updatedTools);
   };
@@ -2197,7 +2197,7 @@ const AgentDetails = () => {
                                   e.preventDefault();
                                   e.stopPropagation();
                                   const updatedTools = editedForm.tools.filter(
-                                    (_, i) => i !== index,
+                                    (t) => t.tool_id !== tool.tool_id,
                                   );
                                   handleChange("tools", updatedTools);
                                 }}
@@ -2348,8 +2348,10 @@ const AgentDetails = () => {
           }}
           tool={selectedTool}
           onSave={handleToolSave}
+          onUpdate={handleToolUpdate}
           existingTools={editedForm.tools}
           agentId={agentId}
+          isCreating={isCreatingTool}
         />
       )}
 
