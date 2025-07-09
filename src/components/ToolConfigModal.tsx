@@ -101,7 +101,7 @@ export const ToolConfigModal = ({
   onUpdate,
   existingTools,
   agentId,
-  isCreating = false
+  isCreating
 }: ToolConfigModalProps & { existingTools?: Tool[] }) => {
 
   const toolTypeOptions = getAllToolTypeOptions().filter(option => {
@@ -164,7 +164,7 @@ export const ToolConfigModal = ({
   };
 
   const handleSaveAndClose = async () => {
-    if (!originalUser) return;
+    // if (!originalUser) return;
     
     try {
       setSaving(true);
@@ -352,7 +352,6 @@ export const ToolConfigModal = ({
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${await originalUser?.getIdToken()}`,
           },
           body: JSON.stringify({
             ...updatedTool,
@@ -377,7 +376,6 @@ export const ToolConfigModal = ({
           method: 'PATCH',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${await originalUser?.getIdToken()}`,
           },
           body: JSON.stringify(updatedTool),
         });
