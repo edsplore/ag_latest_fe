@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -33,7 +32,7 @@ import { VoiceModal } from "../../components/VoiceModal"; // <-- The updated Voi
 import { ModelSelect } from "../../components/ModelSelect";
 import { DataCollectionVariable } from "../../components/DataCollectionVariable";
 import { WebhookVariable } from "../../components/WebhookVariable";
-import { ToolConfigModal } from "../../components/ToolConfigModal (copy)";
+import { ToolConfigModal } from "../../components/ToolConfigModal";
 import { LanguageSelect } from "../../components/LanguageSelect";
 import { Loader, PageLoader } from "../../components/Loader";
 import {
@@ -57,17 +56,6 @@ interface PrivacySettings {
   delete_audio?: boolean;
   apply_to_existing_conversations?: boolean;
   zero_retention_mode?: boolean;
-}
-
-interface Tool {
-  tool_id: string;
-  type: string;
-  name: string;
-  description: string;
-  api_schema?: {
-    url: string;
-    method: string;
-  };
 }
 
 interface AgentDetails {
@@ -99,7 +87,15 @@ interface AgentDetails {
           name: string;
           type: string;
         }[];
-        tool_ids: string[];
+        tools: {
+          type: string;
+          name: string;
+          description: string;
+          api_schema: {
+            url: string;
+            method: string;
+          };
+        }[];
       };
       first_message: string;
       language: string;
@@ -189,7 +185,15 @@ interface EditForm {
     name: string;
     type: string;
   }>;
-  tool_ids: string[];
+  tools: Array<{
+    type: string;
+    name: string;
+    description: string;
+    api_schema: {
+      url: string;
+      method: string;
+    };
+  }>;
   tts?: {
     optimize_streaming_latency?: number;
     stability?: number;
@@ -235,13 +239,12 @@ const AgentDetails = () => {
     [],
   );
   const [loadingKnowledgeBase, setLoadingKnowledgeBase] = useState(false);
-  const [toolsForDisplay, setToolsForDisplay] = useState<Tool[]>([]);
 
   // UI toggles
   const [showModelDropdown, setShowModelDropdown] = useState(false);
   const [showVoiceModal, setShowVoiceModal] = useState(false);
   const [showLanguageDropdown, setShowLanguageDropdown] = useState(false);
-  const [selectedTool, setSelectedTool] = useState<Tool | null>(null);
+  const [selectedTool, setSelectedTool] = useState<any>(null);
   const [isCreatingTool, setIsCreatingTool] = useState(false);
   const [showAdvancedVoiceSettings, setShowAdvancedVoiceSettings] = useState(false);
   const [showAdvancedConversationSettings, setShowAdvancedConversationSettings] = useState(false);
@@ -269,7 +272,7 @@ const AgentDetails = () => {
       }
     },
     knowledge_base: [],
-    tool_ids: [],
+    tools: [],
     platform_settings: {
       data_collection: {},
       workspace_overrides: {
@@ -319,34 +322,6 @@ const AgentDetails = () => {
   const [userPromptLength, setUserPromptLength] = useState<string>("");
   const [userNumberOfPages, setUserNumberOfPages] = useState<string>("");
 
-  // Fetch tools for display
-  const fetchToolsForDisplay = async (toolIds: string[]) => {
-    if (!user || toolIds.length === 0) {
-      setToolsForDisplay([]);
-      return;
-    }
-
-    try {
-      const toolPromises = toolIds.map(async (toolId) => {
-        const response = await fetch(`${BACKEND_URL}/tools/${user.uid}/${toolId}`, {
-          headers: {
-            Authorization: `Bearer ${await originalUser.getIdToken()}`,
-          },
-        });
-        if (response.ok) {
-          return await response.json();
-        }
-        return null;
-      });
-
-      const tools = await Promise.all(toolPromises);
-      const validTools = tools.filter(tool => tool !== null);
-      setToolsForDisplay(validTools);
-    } catch (err) {
-      console.error("Error fetching tools for display:", err);
-      setToolsForDisplay([]);
-    }
-  };
 
   // Fetch agent details
   const fetchAgentDetails = async () => {
@@ -390,7 +365,7 @@ const AgentDetails = () => {
         },
         knowledge_base:
           agentData.conversation_config.agent.prompt.knowledge_base || [],
-        tool_ids: agentData.conversation_config.agent.prompt.tool_ids || [],
+        tools: agentData.conversation_config.agent.prompt.tools || [],
         platform_settings: {
           data_collection: agentData.platform_settings?.data_collection || {},
           workspace_overrides: {
@@ -428,9 +403,6 @@ const AgentDetails = () => {
       setConversationInitiationMode(initialForm.first_message === "" ? "user" : "bot");
       setAsrKeywordsInput(initialForm.asr?.keywords?.join(", ") || "");
 
-      // Fetch tools for display
-      await fetchToolsForDisplay(initialForm.tool_ids);
-
       // Initialize dynamic variable placeholders
       const dynamicVars = extractAllDynamicVariables(initialForm.first_message, initialForm.prompt);
       const placeholders: {[key: string]: string} = {};
@@ -454,6 +426,7 @@ const AgentDetails = () => {
       setSecretName("");
       setSecretValue("");
       setUpdatingSecret(false);
+
 
       // 2) Fetch details of the currently selected voice
       const voiceResponse = await fetch(
@@ -562,7 +535,7 @@ const AgentDetails = () => {
                     custom_llm: editedForm.custom_llm
                   } : {}),
                   knowledge_base: editedForm.knowledge_base,
-                  tool_ids: editedForm.tool_ids,
+                  tools: editedForm.tools,
                 },
                 first_message: conversationInitiationMode === "user" ? "" : editedForm.first_message,
                 language: editedForm.language,
@@ -659,9 +632,6 @@ const AgentDetails = () => {
     const originalVoice = voices.find((v) => v.voice_id === editForm.voice_id);
     setVoice(originalVoice || null);
 
-    // Reset tools for display
-    fetchToolsForDisplay(editForm.tool_ids);
-
     setShowModelDropdown(false);
     setShowLanguageDropdown(false);
   };
@@ -720,13 +690,17 @@ const AgentDetails = () => {
   // Create a new tool
   const handleCreateTool = () => {
     const newTool = {
-      tool_id: "", // Will be set by backend
       type: "webhook",
       name: "",
       description: "",
       api_schema: {
         url: "",
         method: "POST",
+        request_body_schema: {
+          type: "object",
+          properties: {},
+          required: [],
+        },
       },
     };
     setSelectedTool(newTool);
@@ -734,36 +708,33 @@ const AgentDetails = () => {
   };
 
   // Save a tool (either new or edited)
-  const handleToolSave = (updatedTool: Tool) => {
+  const handleToolSave = (updatedTool: any) => {
     if (isCreatingTool) {
-      // Add tool_id to editedForm.tool_ids
       setEditedForm((prev) => ({
         ...prev,
-        tool_ids: [...prev.tool_ids, updatedTool.tool_id],
+        tools: [...(prev.tools || []), { ...updatedTool, method: "POST" }],
       }));
-      // Add to toolsForDisplay
-      setToolsForDisplay((prev) => [...prev, updatedTool]);
       setIsCreatingTool(false);
     } else {
-      // Update toolsForDisplay
-      setToolsForDisplay((prev) =>
-        prev.map((tool) =>
-          tool.tool_id === updatedTool.tool_id ? updatedTool : tool
-        )
+      const updatedTools = editedForm.tools.map((tool) =>
+        tool.name === selectedTool?.name
+          ? { ...updatedTool, method: "POST" }
+          : tool,
       );
+      setEditedForm((prev) => ({
+        ...prev,
+        tools: updatedTools,
+      }));
     }
     setSelectedTool(null);
     setHasChanges(true);
   };
 
-  const handleToolUpdate = (updatedTool: Tool) => {
-    // Update toolsForDisplay
-    setToolsForDisplay((prev) =>
-      prev.map((tool) =>
-        tool.tool_id === updatedTool.tool_id ? updatedTool : tool
-      )
+  const handleToolUpdate = (updatedTool: any) => {
+    const updatedTools = editedForm.tools.map((tool) =>
+      tool.name === updatedTool.name ? updatedTool : tool,
     );
-    setHasChanges(true);
+    handleChange("tools", updatedTools);
   };
 
   // Called when user picks a new voice in the VoiceModal
@@ -2185,18 +2156,21 @@ const AgentDetails = () => {
                 </div>
 
                 <div className="space-y-4">
-                  {toolsForDisplay.length === 0 ? (
+                  {editedForm.tools?.length === 0 ? (
                     <div className="text-center py-8 bg-gray-50 dark:bg-dark-100 rounded-xl">
                       <Webhook className="w-12 h-12 text-gray-400 mx-auto mb-2" />
                       <p className="text-sm text-gray-600 dark:text-gray-400">
                         No tools configured
                       </p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                        Tools functionality coming soon
+                      </p>
                     </div>
                   ) : (
                     <div className="divide-y divide-gray-200 dark:divide-dark-100">
-                      {toolsForDisplay.map((tool) => (
+                      {editedForm.tools.map((tool, index) => (
                         <div
-                          key={tool.tool_id}
+                          key={index}
                           className="py-4 first:pt-0 last:pb-0 hover:bg-gray-50 dark:hover:bg-dark-100 transition-colors rounded-lg"
                         >
                           <div className="flex items-center justify-between">
@@ -2222,15 +2196,10 @@ const AgentDetails = () => {
                                 onClick={(e) => {
                                   e.preventDefault();
                                   e.stopPropagation();
-                                  // Remove tool_id from editedForm.tool_ids
-                                  const updatedToolIds = editedForm.tool_ids.filter(
-                                    (toolId) => toolId !== tool.tool_id
+                                  const updatedTools = editedForm.tools.filter(
+                                    (_, i) => i !== index,
                                   );
-                                  handleChange("tool_ids", updatedToolIds);
-                                  // Remove from toolsForDisplay
-                                  setToolsForDisplay((prev) =>
-                                    prev.filter((t) => t.tool_id !== tool.tool_id)
-                                  );
+                                  handleChange("tools", updatedTools);
                                 }}
                                 className="p-2 text-gray-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
                               >
@@ -2379,10 +2348,8 @@ const AgentDetails = () => {
           }}
           tool={selectedTool}
           onSave={handleToolSave}
-          onUpdate={handleToolUpdate}
-          existingTools={toolsForDisplay}
+          existingTools={editedForm.tools}
           agentId={agentId}
-          isCreating={isCreatingTool}
         />
       )}
 

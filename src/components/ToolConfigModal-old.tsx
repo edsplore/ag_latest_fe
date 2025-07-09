@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Webhook } from "lucide-react";
@@ -6,7 +5,6 @@ import { cn } from "../lib/utils";
 import { useAuth } from "../contexts/AuthContext";
 
 interface Tool {
-  tool_id?: string;
   type: string;
   name: string;
   description: string;
@@ -60,8 +58,6 @@ interface ToolConfigModalProps {
   tool: Tool;
   agentId?: string;
   onSave: (updatedTool: Tool) => void;
-  onUpdate?: (updatedTool: Tool) => void;
-  isCreating?: boolean;
 }
 
 const validateToolName = (name: string, type: string): string | null => {
@@ -99,10 +95,8 @@ export const ToolConfigModal = ({
   onClose,
   tool,
   onSave,
-  onUpdate,
   existingTools,
-  agentId,
-  isCreating = false
+  agentId
 }: ToolConfigModalProps & { existingTools?: Tool[] }) => {
 
   const toolTypeOptions = getAllToolTypeOptions().filter(option => {
@@ -154,8 +148,7 @@ export const ToolConfigModal = ({
   const [nameError, setNameError] = useState<string | null>(null);
   const [jsonError, setJsonError] = useState("");
   const [showSampleModal, setShowSampleModal] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const { user: originalUser } = useAuth();
+  const { user } = useAuth();
 
   const handleClose = () => {
     setNameError(null);
@@ -164,13 +157,8 @@ export const ToolConfigModal = ({
     onClose();
   };
 
-  const handleSaveAndClose = async () => {
-    if (!originalUser) return;
-    
+  const handleSaveAndClose = () => {
     try {
-      setSaving(true);
-      setError("");
-
       const nameValidationError = validateToolName(editedTool.name, editedTool.type);
       if (nameValidationError && editedTool.type === "webhook") {
         setNameError(nameValidationError);
@@ -344,58 +332,10 @@ export const ToolConfigModal = ({
           ...backendConfig,
         }
       }
-
-      if (isCreating) {
-        // Create new tool via API
-        const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/tools/create`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(updatedTool),
-        });
-
-        if (!response.ok) {
-          throw new Error('Failed to create tool');
-        }
-
-        const createdTool = await response.json();
-        updatedTool.tool_id = createdTool.tool_id;
-        onSave(updatedTool);
-      } else {
-        // Update existing tool via API
-        if (!editedTool.tool_id) {
-          throw new Error('Tool ID is required for updates');
-        }
-
-        const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/tools/${originalUser.uid}/${editedTool.tool_id}`, {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(updatedTool),
-        });
-
-        if (!response.ok) {
-          throw new Error('Failed to update tool');
-        }
-
-        const responseData = await response.json();
-        updatedTool.tool_id = editedTool.tool_id;
-        
-        if (onUpdate) {
-          onUpdate(updatedTool);
-        } else {
-          onSave(updatedTool);
-        }
-      }
-      
+      onSave(updatedTool);
       onClose();
     } catch (err) {
-      console.error("Error saving tool:", err);
-      setError(err instanceof Error ? err.message : "Failed to save changes");
-    } finally {
-      setSaving(false);
+      setError("Failed to save changes");
     }
   };
 
@@ -780,7 +720,6 @@ export const ToolConfigModal = ({
                   <button
                     onClick={handleSaveAndClose}
                     disabled={
-                      saving ||
                       !!nameError || 
                       !!jsonError || 
                       (editedTool.type === "ghl_booking" && (!editedTool.ghlApiKey || !editedTool.ghlCalendarId || !editedTool.ghlLocationId)) ||
@@ -789,15 +728,14 @@ export const ToolConfigModal = ({
                     className={cn(
                       "px-4 py-2 text-sm font-lato font-semibold text-white bg-primary rounded-lg",
                       "hover:bg-primary-600 transition-colors",
-                      (saving ||
-                       !!nameError || 
+                      (!!nameError || 
                        !!jsonError || 
                        (editedTool.type === "ghl_booking" && (!editedTool.ghlApiKey || !editedTool.ghlCalendarId || !editedTool.ghlLocationId)) ||
                        (editedTool.type === "calcom" && !editedTool.calApiKey)) &&
                         "opacity-50 cursor-not-allowed",
                     )}
                   >
-                    {saving ? "Saving..." : "Done"}
+                    Done
                   </button>
                 </div>
               </div>
