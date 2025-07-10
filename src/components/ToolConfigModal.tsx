@@ -327,19 +327,6 @@ export const ToolConfigModal = ({
                         </p>
                       </div>
 
-                      {/* Fixed Name */}
-                      <div>
-                        <label className="block text-sm font-lato font-semibold text-gray-900 dark:text-white mb-2">
-                          Name (Fixed)
-                        </label>
-                        <input
-                          type="text"
-                          value={builtInToolConfig.name}
-                          readOnly
-                          className="input font-lato font-semibold bg-gray-100 dark:bg-dark-100 cursor-not-allowed"
-                        />
-                      </div>
-
                       {/* Editable Description */}
                       <div>
                         <label className="block text-sm font-lato font-semibold text-gray-900 dark:text-white mb-2">
@@ -382,30 +369,50 @@ export const ToolConfigModal = ({
                         </p>
                       </div>
 
-                      {/* Fixed Type */}
-                      <div>
-                        <label className="block text-sm font-lato font-semibold text-gray-900 dark:text-white mb-2">
-                          Type (Fixed)
-                        </label>
-                        <input
-                          type="text"
-                          value={builtInToolConfig.type}
-                          readOnly
-                          className="input font-lato font-semibold bg-gray-100 dark:bg-dark-100 cursor-not-allowed"
-                        />
-                      </div>
+                      {/* Disabled/Fixed Fields */}
+                      <div className="pt-4 border-t border-gray-200 dark:border-dark-100">
+                        <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                          The following fields are system-defined and cannot be modified:
+                        </p>
+                        
+                        {/* Fixed Name */}
+                        <div className="mb-4">
+                          <label className="block text-sm font-lato font-semibold text-gray-900 dark:text-white mb-2">
+                            Name
+                          </label>
+                          <input
+                            type="text"
+                            value={builtInToolConfig.name}
+                            disabled
+                            className="input font-lato font-semibold disabled:bg-gray-100 dark:disabled:bg-dark-100 disabled:cursor-not-allowed disabled:opacity-60"
+                          />
+                        </div>
 
-                      {/* System Tool Type */}
-                      <div>
-                        <label className="block text-sm font-lato font-semibold text-gray-900 dark:text-white mb-2">
-                          System Tool Type (Fixed)
-                        </label>
-                        <input
-                          type="text"
-                          value={builtInToolConfig.params.system_tool_type}
-                          readOnly
-                          className="input font-lato font-semibold bg-gray-100 dark:bg-dark-100 cursor-not-allowed"
-                        />
+                        {/* Fixed Type */}
+                        <div className="mb-4">
+                          <label className="block text-sm font-lato font-semibold text-gray-900 dark:text-white mb-2">
+                            Type
+                          </label>
+                          <input
+                            type="text"
+                            value={builtInToolConfig.type}
+                            disabled
+                            className="input font-lato font-semibold disabled:bg-gray-100 dark:disabled:bg-dark-100 disabled:cursor-not-allowed disabled:opacity-60"
+                          />
+                        </div>
+
+                        {/* System Tool Type */}
+                        <div>
+                          <label className="block text-sm font-lato font-semibold text-gray-900 dark:text-white mb-2">
+                            System Tool Type
+                          </label>
+                          <input
+                            type="text"
+                            value={builtInToolConfig.params.system_tool_type}
+                            disabled
+                            className="input font-lato font-semibold disabled:bg-gray-100 dark:disabled:bg-dark-100 disabled:cursor-not-allowed disabled:opacity-60"
+                          />
+                        </div>
                       </div>
                     </div>
                   )}
