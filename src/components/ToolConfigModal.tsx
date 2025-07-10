@@ -177,6 +177,8 @@ export const ToolConfigModal = ({
     const [selectedToolId, setSelectedToolId] = useState<string | null>(null);
   const [loadingToolDetails, setLoadingToolDetails] = useState(false);
   const [error, setError] = useState("");
+  const [jsonError, setJsonError] = useState("");
+  const [showSampleModal, setShowSampleModal] = useState(false);
 
   const { user } = useAuth();
 
@@ -281,8 +283,25 @@ export const ToolConfigModal = ({
     }
   }, [toolType, user, toolDetailsCache]);
 
+  const handleJsonChange = (value: string) => {
+    try {
+      const parsed = JSON.parse(value);
+      setJsonError("");
+      setNewToolConfig(prev => ({
+        ...prev,
+        api_schema: {
+          ...prev.api_schema,
+          request_body_schema: parsed
+        }
+      }));
+    } catch (err) {
+      setJsonError("Invalid JSON format");
+    }
+  };
+
   const handleClose = () => {
     setError("");
+    setJsonError("");
     if (!editingTool) {
       setToolType("add_new");
       setSelectedBuiltInKey("");
@@ -878,6 +897,39 @@ export const ToolConfigModal = ({
                           max="120"
                         />
                       </div>
+
+                      <div>
+                        <label className="block text-sm font-lato font-semibold text-gray-900 dark:text-white mb-2">
+                          Request Body Schema
+                        </label>
+                        <div className="flex items-center justify-between mb-4">
+                          <p className="text-sm text-gray-500 dark:text-gray-400">
+                            Define the structure of the request body in JSON format
+                          </p>
+                          <button
+                            onClick={() => setShowSampleModal(true)}
+                            className="text-sm text-primary hover:text-primary-600 dark:text-primary-400 dark:hover:text-primary-300 font-lato font-semibold"
+                          >
+                            View Sample Schema
+                          </button>
+                        </div>
+                        <div className="relative">
+                          <textarea
+                            value={JSON.stringify(newToolConfig.api_schema?.request_body_schema || {}, null, 2)}
+                            onChange={(e) => handleJsonChange(e.target.value)}
+                            className={cn(
+                              "input font-mono text-sm h-[400px] focus:border-primary dark:focus:border-primary-400",
+                              jsonError && "border-red-500 dark:border-red-500"
+                            )}
+                            placeholder="Enter JSON schema..."
+                          />
+                          {jsonError && (
+                            <p className="mt-2 text-sm text-red-600 dark:text-red-400">
+                              {jsonError}
+                            </p>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   )}
 
@@ -1218,7 +1270,7 @@ export const ToolConfigModal = ({
                   onClick={handleSaveAndClose}
                   disabled={
                       loadingToolDetails ||
-                      (isNewTool && !newToolConfig.name.trim()) ||
+                      (isNewTool && (!newToolConfig.name.trim() || jsonError)) ||
                       (isBuiltInTool && !builtInToolConfig) ||
                       (isGhlTool && (!ghlConfig.ghlApiKey || !ghlConfig.ghlCalendarId || !ghlConfig.ghlLocationId)) ||
                       (isCalTool && !calConfig.calApiKey)
@@ -1227,7 +1279,7 @@ export const ToolConfigModal = ({
                       "px-4 py-2 text-sm font-lato font-semibold text-white bg-primary rounded-lg",
                       "hover:bg-primary-600 transition-colors",
                       (loadingToolDetails ||
-                       (isNewTool && !newToolConfig.name.trim()) ||
+                       (isNewTool && (!newToolConfig.name.trim() || jsonError)) ||
                        (isBuiltInTool && !builtInToolConfig) ||
                        (isGhlTool && (!ghlConfig.ghlApiKey || !ghlConfig.ghlCalendarId || !ghlConfig.ghlLocationId)) ||
                        (isCalTool && !calConfig.calApiKey)) &&
@@ -1239,6 +1291,154 @@ export const ToolConfigModal = ({
               </div>
             </div>
           </motion.div>
+
+          {/* Sample Schema Modal */}
+          <AnimatePresence>
+            {showSampleModal && (
+              <>
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="fixed inset-0 bg-black/20 dark:bg-black/40 backdrop-blur-sm z-[60]"
+                  onClick={() => setShowSampleModal(false)}
+                />
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  className="fixed inset-0 m-auto w-[600px] h-[500px] bg-white dark:bg-dark-200 rounded-xl shadow-xl z-[70] flex flex-col"
+                >
+                  <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-dark-100">
+                    <h3 className="text-lg font-lato font-semibold text-gray-900 dark:text-white">
+                      Sample Schema
+                    </h3>
+                    <button
+                      onClick={() => setShowSampleModal(false)}
+                      className="p-2 text-gray-400 hover:text-gray-500 dark:text-gray-500 dark:hover:text-gray-400 rounded-lg hover:bg-gray-100 dark:hover:bg-dark-100"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+                  <div className="flex-1 p-4 overflow-auto">
+                    <pre className="font-mono text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap">
+                      {JSON.stringify(
+                        {
+                          type: "object",
+                          properties: {
+                            new_time: {
+                              type: "string",
+                              description: "The new time",
+                            },
+                            Laptop: {
+                              type: "object",
+                              properties: {
+                                Screen_size: {
+                                  type: "string",
+                                  description: "Size of the screen",
+                                },
+                                operating_system: {
+                                  type: "string",
+                                  description: "Version of the OS",
+                                },
+                              },
+                              required: ["Screen_size", "operating_system"],
+                              description: "Brand of the laptop",
+                            },
+                            new_date: {
+                              type: "string",
+                              description: "The new booking date",
+                            },
+                            country_user: {
+                              type: "array",
+                              items: {
+                                type: "string",
+                                description: "Interests",
+                              },
+                              description: "User's interests",
+                            },
+                          },
+                          required: [
+                            "new_time",
+                            "Laptop",
+                            "new_date",
+                            "country_user",
+                          ],
+                          description:
+                            "Type of parameters from the transcript",
+                        },
+                        null,
+                        2,
+                      )}
+                    </pre>
+                  </div>
+                  <div className="p-4 border-t border-gray-200 dark:border-dark-100">
+                    <button
+                      onClick={() => {
+                        handleJsonChange(
+                          JSON.stringify(
+                            {
+                              type: "object",
+                              properties: {
+                                new_time: {
+                                  type: "string",
+                                  description: "The new time",
+                                },
+                                Laptop: {
+                                  type: "object",
+                                  properties: {
+                                    Screen_size: {
+                                      type: "string",
+                                      description: "Size of the screen",
+                                    },
+                                    operating_system: {
+                                      type: "string",
+                                      description: "Version of the OS",
+                                    },
+                                  },
+                                  required: [
+                                    "Screen_size",
+                                    "operating_system",
+                                  ],
+                                  description: "Brand of the laptop",
+                                },
+                                new_date: {
+                                  type: "string",
+                                  description: "The new booking date",
+                                },
+                                country_user: {
+                                  type: "array",
+                                  items: {
+                                    type: "string",
+                                    description: "Interests",
+                                  },
+                                  description: "User's interests",
+                                },
+                              },
+                              required: [
+                                "new_time",
+                                "Laptop",
+                                "new_date",
+                                "country_user",
+                              ],
+                              description:
+                                "Type of parameters from the transcript",
+                            },
+                            null,
+                            2,
+                          ),
+                        );
+                        setShowSampleModal(false);
+                      }}
+                      className="w-full px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-600 font-lato font-semibold transition-colors"
+                    >
+                      Use This Schema
+                    </button>
+                  </div>
+                </motion.div>
+              </>
+            )}
+          </AnimatePresence>
         </>
       )}
     </AnimatePresence>
