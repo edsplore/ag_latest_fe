@@ -1,20 +1,29 @@
-
 import React, { useState, useEffect } from "react";
 import { loadStripe } from "@stripe/stripe-js";
 import { useAuth } from "../contexts/AuthContext";
 import { doc, updateDoc, getDoc } from "firebase/firestore";
 import { db } from "../lib/firebase";
-import { CheckCircle, CreditCard, Loader, Sparkles, Shield, Zap, ArrowRight } from "lucide-react";
+import {
+  CheckCircle,
+  CreditCard,
+  Loader,
+  Sparkles,
+  Shield,
+  Zap,
+  ArrowRight,
+} from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || "pk_test_your_key_here");
+const stripePromise = loadStripe(
+  import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || "pk_test_your_key_here",
+);
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 
 interface UserData {
   email: string;
-  role: 'admin' | 'user';
+  role: "admin" | "user";
   createdByAdmin: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -67,21 +76,24 @@ const PaymentForm: React.FC<{ onSuccess: () => void }> = ({ onSuccess }) => {
       }
 
       // Create checkout session on your backend
-      const response = await fetch(`${BACKEND_URL}/create-checkout-session`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${await user.getIdToken()}`,
+      const response = await fetch(
+        `${BACKEND_URL}/payment/create-checkout-session`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${await user.getIdToken()}`,
+          },
+          body: JSON.stringify({
+            amount: 5000, // $50.00 in cents
+            currency: "usd",
+            userId: user.uid,
+            userEmail: user.email,
+            successUrl: `${window.location.origin}/payment?success=true`,
+            cancelUrl: `${window.location.origin}/payment?canceled=true`,
+          }),
         },
-        body: JSON.stringify({
-          amount: 5000, // $50.00 in cents
-          currency: "usd",
-          userId: user.uid,
-          userEmail: user.email,
-          success_url: `${window.location.origin}/payment?success=true`,
-          cancel_url: `${window.location.origin}/payment?canceled=true`,
-        }),
-      });
+      );
 
       const { sessionId, error: backendError } = await response.json();
 
@@ -97,7 +109,10 @@ const PaymentForm: React.FC<{ onSuccess: () => void }> = ({ onSuccess }) => {
       });
 
       if (stripeError) {
-        setError(stripeError.message || "Failed to redirect to checkout. Please try again.");
+        setError(
+          stripeError.message ||
+            "Failed to redirect to checkout. Please try again.",
+        );
         setIsProcessing(false);
       }
     } catch (err: any) {
@@ -108,13 +123,10 @@ const PaymentForm: React.FC<{ onSuccess: () => void }> = ({ onSuccess }) => {
   };
 
   return (
-    <motion.div
-      variants={childVariants}
-      className="relative max-w-md w-full"
-    >
+    <motion.div variants={childVariants} className="relative max-w-md w-full">
       {/* Background glow effect */}
       <div className="absolute -inset-4 bg-gradient-to-r from-primary/20 to-primary-600/20 rounded-2xl blur-xl opacity-30" />
-      
+
       <div className="relative bg-white/5 backdrop-blur-sm rounded-2xl p-8 border border-white/10 shadow-2xl">
         {/* Header */}
         <div className="mb-8 text-center">
@@ -123,8 +135,12 @@ const PaymentForm: React.FC<{ onSuccess: () => void }> = ({ onSuccess }) => {
               <CreditCard className="w-8 h-8 text-primary" />
             </div>
           </div>
-          <h2 className="text-2xl font-bold text-white mb-2">Complete Your Setup</h2>
-          <p className="text-gray-300">Add $50 to unlock all Xpress-voice features</p>
+          <h2 className="text-2xl font-bold text-white mb-2">
+            Complete Your Setup
+          </h2>
+          <p className="text-gray-300">
+            Add $50 to unlock all Xpress-voice features
+          </p>
         </div>
 
         {/* Features preview */}
@@ -137,7 +153,7 @@ const PaymentForm: React.FC<{ onSuccess: () => void }> = ({ onSuccess }) => {
           {[
             { icon: Zap, text: "Unlimited voice calls" },
             { icon: Shield, text: "Priority support" },
-            { icon: Sparkles, text: "Advanced AI features" }
+            { icon: Sparkles, text: "Advanced AI features" },
           ].map((feature, index) => (
             <motion.div
               key={index}
@@ -227,7 +243,7 @@ const Payment: React.FC = () => {
     try {
       const userDocRef = doc(db, "users", user.uid);
       const userDoc = await getDoc(userDocRef);
-      
+
       if (userDoc.exists()) {
         const userData = userDoc.data() as UserData;
         setHasToppedUp(userData.hasToppedUp || false);
@@ -244,15 +260,15 @@ const Payment: React.FC = () => {
 
   const checkPaymentStatus = () => {
     const urlParams = new URLSearchParams(window.location.search);
-    const success = urlParams.get('success');
-    const canceled = urlParams.get('canceled');
+    const success = urlParams.get("success");
+    const canceled = urlParams.get("canceled");
 
-    if (success === 'true') {
+    if (success === "true") {
       setPaymentSuccess(true);
       handlePaymentSuccess();
-    } else if (canceled === 'true') {
+    } else if (canceled === "true") {
       // User canceled payment, just stay on payment page
-      console.log('Payment was canceled');
+      console.log("Payment was canceled");
     }
   };
 
@@ -285,7 +301,7 @@ const Payment: React.FC = () => {
       <div className="min-h-screen bg-dark-300 flex justify-center items-center text-white relative overflow-hidden">
         {/* Background gradient */}
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary-600/5" />
-        
+
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -303,7 +319,7 @@ const Payment: React.FC = () => {
       <div className="min-h-screen bg-dark-300 text-white relative overflow-hidden">
         {/* Background effects */}
         <div className="absolute inset-0 bg-gradient-to-br from-green-500/5 via-transparent to-emerald-500/5" />
-        
+
         <div className="relative flex justify-center items-center min-h-screen p-4">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
@@ -385,7 +401,8 @@ const Payment: React.FC = () => {
                 </motion.div>
                 <h2 className="text-2xl font-bold mb-3">All Set! 🚀</h2>
                 <p className="text-gray-300 mb-8 leading-relaxed">
-                  Your account is ready to use. Access all Xpress-voice features and start building amazing voice experiences.
+                  Your account is ready to use. Access all Xpress-voice features
+                  and start building amazing voice experiences.
                 </p>
                 <motion.button
                   onClick={() => navigate("/dashboard")}
@@ -420,15 +437,22 @@ const Payment: React.FC = () => {
                 </motion.div>
                 <h2 className="text-3xl font-bold mb-3">Almost There!</h2>
                 <p className="text-gray-300 mb-8 leading-relaxed">
-                  Unlock the full power of Xpress-voice with unlimited voice calls, premium features, and priority support.
+                  Unlock the full power of Xpress-voice with unlimited voice
+                  calls, premium features, and priority support.
                 </p>
-                
+
                 {/* Features list */}
                 <div className="mb-8 space-y-3">
                   {[
-                    { icon: Zap, text: "Unlimited voice calls & conversations" },
-                    { icon: Shield, text: "Enterprise-grade security & support" },
-                    { icon: Sparkles, text: "Advanced AI models & features" }
+                    {
+                      icon: Zap,
+                      text: "Unlimited voice calls & conversations",
+                    },
+                    {
+                      icon: Shield,
+                      text: "Enterprise-grade security & support",
+                    },
+                    { icon: Sparkles, text: "Advanced AI models & features" },
                   ].map((feature, index) => (
                     <motion.div
                       key={index}
@@ -457,8 +481,10 @@ const Payment: React.FC = () => {
                     <ArrowRight className="w-5 h-5 ml-3 group-hover:translate-x-1 transition-transform" />
                   </div>
                 </motion.button>
-                
-                <p className="mt-4 text-xs text-gray-400">One-time payment • No subscription • Full access</p>
+
+                <p className="mt-4 text-xs text-gray-400">
+                  One-time payment • No subscription • Full access
+                </p>
               </div>
             </motion.div>
           ) : (
