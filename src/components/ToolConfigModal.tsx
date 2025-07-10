@@ -162,6 +162,12 @@ export const ToolConfigModal = ({
     }
   });
 
+  const [ghlConfig, setGhlConfig] = useState({
+    ghlApiKey: "",
+    ghlCalendarId: "",
+    ghlLocationId: ""
+  });
+
   const [userTools, setUserTools] = useState<UserTool[]>([]);
   const [toolDetailsCache, setToolDetailsCache] = useState<{ [key: string]: ToolDetails }>({});
   const [selectedToolDetails, setSelectedToolDetails] = useState<ToolDetails | null>(null);
@@ -254,6 +260,11 @@ export const ToolConfigModal = ({
           }
         }
       });
+      setGhlConfig({
+        ghlApiKey: "",
+        ghlCalendarId: "",
+        ghlLocationId: ""
+      });
     }
     onClose();
   };
@@ -267,6 +278,15 @@ export const ToolConfigModal = ({
       setSelectedBuiltInKey(type);
       const existingConfig = builtInTools[type];
       setBuiltInToolConfig(existingConfig || getBuiltInToolDefaults(type));
+    } else if (type === "ghl_booking") {
+      // Reset GHL config when switching to GHL tool
+      setGhlConfig({
+        ghlApiKey: "",
+        ghlCalendarId: "",
+        ghlLocationId: ""
+      });
+      setSelectedBuiltInKey("");
+      setBuiltInToolConfig(null);
     } else {
       setSelectedBuiltInKey("");
       setBuiltInToolConfig(null);
@@ -302,6 +322,98 @@ export const ToolConfigModal = ({
 
         if (!response.ok) {
           throw new Error('Failed to create tool');
+        }
+
+        const createdTool = await response.json();
+        const updatedToolIds = [...toolIds, createdTool.id];
+        onSave(updatedToolIds, builtInTools);
+      } else if (toolType === "ghl_booking") {
+        // Create GHL booking tool
+        if (!ghlConfig.ghlApiKey || !ghlConfig.ghlCalendarId || !ghlConfig.ghlLocationId) {
+          setError("All GHL fields (API Key, Calendar ID, Location ID) are required");
+          return;
+        }
+
+        const ghlToolConfig = {
+          name: "GHL_BOOKING",
+          description: "Create a booking in GHL calendar",
+          type: "webhook",
+          expects_response: true,
+          response_timeout_secs: 20,
+          api_schema: {
+            url: `${import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000'}/ghl/book/`,
+            method: 'POST',
+            request_body_schema: {
+              type: 'object',
+              properties: {
+                apiKey: {
+                  type: "string",
+                  constant_value: ghlConfig.ghlApiKey
+                }, 
+                calendarId: {
+                  type: "string",
+                  constant_value: ghlConfig.ghlCalendarId
+                }, 
+                locationId: {
+                  type: "string",
+                  constant_value: ghlConfig.ghlLocationId
+                },
+                startTime: {
+                  type: 'string',
+                  description: 'Event start time in ISO 8601 format with timezone offset (e.g. 2021-06-23T03:30:00+05:30)'
+                },
+                endTime: {
+                  type: 'string',
+                  description: 'Event end time in ISO 8601 format with timezone offset (e.g. 2021-06-23T04:30:00+05:30)'
+                },
+                title: {
+                  type: 'string',
+                  description: 'Title or name of the event/appointment to be created in GHL calendar'
+                },
+                timezone: {
+                  type: "string",
+                  description: "Timezone of the event in IANA timezone format (e.g. America/New_York, Europe/London)"
+                },
+                contactInfo: {
+                  type: 'object',
+                  properties: {
+                    phone: {
+                      type: 'string',
+                      description: 'Contact phone number with country code'
+                    },
+                    firstName: {
+                      type: 'string',
+                      description: 'First name of the contact'
+                    },
+                    lastName: {
+                      type: 'string',
+                      description: 'Last name of the contact'
+                    },
+                    email: {
+                      type: 'string',
+                      description: 'Email address of the contact'
+                    }
+                  },
+                  required: ['phone'],
+                  description: 'Contact information for GHL'
+                }
+              },
+              required: ['startTime', 'endTime', 'title', 'timezone', 'contactInfo']
+            }
+          }
+        };
+
+        const response = await fetch(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000'}/tools/${user.uid}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${await user.getIdToken()}`,
+          },
+          body: JSON.stringify(ghlToolConfig),
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to create GHL tool');
         }
 
         const createdTool = await response.json();
@@ -343,7 +455,8 @@ export const ToolConfigModal = ({
 
   const getToolTypeOptions = () => {
     const options = [
-      { value: "add_new", label: "➕ Add New Tool", icon: Plus }
+      { value: "add_new", label: "➕ Add New Tool", icon: Plus },
+      { value: "ghl_booking", label: "🗓️ GHL Booking Tool", icon: Webhook }
     ];
 
     // Add user's available tools
@@ -371,7 +484,8 @@ export const ToolConfigModal = ({
 
   const isBuiltInTool = BUILT_IN_TOOL_KEYS.includes(toolType);
   const isNewTool = toolType === "add_new";
-  const isExistingTool = !isBuiltInTool && !isNewTool;
+  const isGhlTool = toolType === "ghl_booking";
+  const isExistingTool = !isBuiltInTool && !isNewTool && !isGhlTool;
 
   return (
     <AnimatePresence>
@@ -565,6 +679,76 @@ export const ToolConfigModal = ({
                     </div>
                   )}
 
+                  {/* GHL Tool Configuration */}
+                  {isGhlTool && (
+                    <div className="space-y-4">
+                      <div className="p-4 bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20 rounded-lg">
+                        <p className="text-sm text-blue-800 dark:text-blue-200">
+                          Create a GHL booking tool with automatic schema configuration.
+                        </p>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-lato font-semibold text-gray-900 dark:text-white mb-2">
+                          GHL API Key <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={ghlConfig.ghlApiKey}
+                          onChange={(e) => setGhlConfig(prev => ({ ...prev, ghlApiKey: e.target.value }))}
+                          className="input font-lato font-semibold focus:border-primary dark:focus:border-primary-400"
+                          placeholder="Enter your GHL API key"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-lato font-semibold text-gray-900 dark:text-white mb-2">
+                          Calendar ID <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={ghlConfig.ghlCalendarId}
+                          onChange={(e) => setGhlConfig(prev => ({ ...prev, ghlCalendarId: e.target.value }))}
+                          className="input font-lato font-semibold focus:border-primary dark:focus:border-primary-400"
+                          placeholder="Enter GHL calendar ID"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-lato font-semibold text-gray-900 dark:text-white mb-2">
+                          Location ID <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={ghlConfig.ghlLocationId}
+                          onChange={(e) => setGhlConfig(prev => ({ ...prev, ghlLocationId: e.target.value }))}
+                          className="input font-lato font-semibold focus:border-primary dark:focus:border-primary-400"
+                          placeholder="Enter GHL location ID"
+                        />
+                      </div>
+
+                      <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                        <h3 className="text-sm font-lato font-semibold text-gray-900 dark:text-white mb-3">
+                          Required Parameters (Auto-configured)
+                        </h3>
+                        <pre className="text-sm font-mono bg-white dark:bg-dark-200 p-4 rounded-lg border border-gray-200 dark:border-dark-100 overflow-x-auto">
+                          {`{
+  "startTime": "2021-06-23T03:30:00+05:30",
+  "endTime": "2021-06-23T04:30:00+05:30", 
+  "title": "Test Event",
+  "timezone": "America/New_York",
+  "contactInfo": {
+    "phone": "+15551234567",
+    "firstName": "John",
+    "lastName": "Doe", 
+    "email": "john.doe@example.com"
+  }
+}`}
+                        </pre>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Built-in Tool Configuration */}
                   {isBuiltInTool && builtInToolConfig && (
                     <div className="space-y-4">
@@ -673,14 +857,16 @@ export const ToolConfigModal = ({
                   disabled={
                     loadingToolDetails ||
                     (isNewTool && !newToolConfig.name.trim()) ||
-                    (isBuiltInTool && !builtInToolConfig)
+                    (isBuiltInTool && !builtInToolConfig) ||
+                    (isGhlTool && (!ghlConfig.ghlApiKey || !ghlConfig.ghlCalendarId || !ghlConfig.ghlLocationId))
                   }
                   className={cn(
                     "px-4 py-2 text-sm font-lato font-semibold text-white bg-primary rounded-lg",
                     "hover:bg-primary-600 transition-colors",
                     (loadingToolDetails ||
                      (isNewTool && !newToolConfig.name.trim()) ||
-                     (isBuiltInTool && !builtInToolConfig)) &&
+                     (isBuiltInTool && !builtInToolConfig) ||
+                     (isGhlTool && (!ghlConfig.ghlApiKey || !ghlConfig.ghlCalendarId || !ghlConfig.ghlLocationId))) &&
                       "opacity-50 cursor-not-allowed",
                   )}
                 >
