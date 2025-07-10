@@ -493,7 +493,7 @@ export const ToolConfigModal = ({
                 properties: {
                   apiKey: {
                     type: "string",
-                    constant_value: editedTool.calApiKey
+                    constant_value: calConfig.calApiKey
                   },
                   start: {
                     type: 'string',
