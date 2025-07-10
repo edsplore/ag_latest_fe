@@ -447,6 +447,45 @@ export const ToolConfigModal = ({
         const createdTool = await response.json();
         const updatedToolIds = [...toolIds, createdTool.id];
         onSave(updatedToolIds, builtInTools);
+      } else if (toolType === "ghl_booking" && editingTool?.type === 'tool_id' && selectedToolDetails) {
+        // Update existing GHL tool
+        if (!ghlConfig.ghlApiKey || !ghlConfig.ghlCalendarId || !ghlConfig.ghlLocationId) {
+          setError("All GHL fields (API Key, Calendar ID, Location ID) are required");
+          return;
+        }
+
+        let updatedToolDetails = { ...selectedToolDetails };
+        updatedToolDetails.api_schema.request_body_schema.properties = {
+          ...selectedToolDetails.api_schema.request_body_schema.properties,
+          apiKey: {
+            ...selectedToolDetails.api_schema.request_body_schema.properties.apiKey,
+            constant_value: ghlConfig.ghlApiKey
+          },
+          calendarId: {
+            ...selectedToolDetails.api_schema.request_body_schema.properties.calendarId,
+            constant_value: ghlConfig.ghlCalendarId
+          },
+          locationId: {
+            ...selectedToolDetails.api_schema.request_body_schema.properties.locationId,
+            constant_value: ghlConfig.ghlLocationId
+          }
+        };
+
+        const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/tools/${user.uid}/${selectedToolId}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${await user.getIdToken()}`,
+          },
+          body: JSON.stringify({ tool_config: updatedToolDetails }),
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to update GHL tool');
+        }
+
+        // Keep existing tool IDs since we're updating, not adding
+        onSave(toolIds, builtInTools);
       } else {
         // Handle existing tool ID selection or update
         if (editingTool?.type === 'tool_id' && selectedToolDetails) {
@@ -496,6 +535,7 @@ export const ToolConfigModal = ({
           const updatedToolIds = [...toolIds, toolType];
           onSave(updatedToolIds, builtInTools);
         } else {
+          // Tool already exists in agent, just save current state
           onSave(toolIds, builtInTools);
         }
       }
@@ -539,7 +579,7 @@ export const ToolConfigModal = ({
   const isBuiltInTool = BUILT_IN_TOOL_KEYS.includes(toolType);
   const isNewTool = toolType === "add_new";
   const isGhlTool = toolType === "ghl_booking" || selectedToolDetails?.name === 'GHL_BOOKING';
-  const isExistingTool = !isBuiltInTool && !isNewTool && toolType !== "ghl_booking" && selectedToolDetails?.name !== 'GHL_BOOKING';
+  const isExistingTool = !isBuiltInTool && !isNewTool && !isGhlTool;
 
   return (
     <AnimatePresence>
