@@ -99,7 +99,7 @@ interface AgentDetails {
         }[];
         tool_ids: string[];
         built_in_tools: {
-          [key: string]: BuiltInTool;
+          [key: string]: BuiltInTool | null;
         };
       };
       first_message: string;
@@ -192,7 +192,7 @@ interface EditForm {
   }>;
   tool_ids: string[];
   built_in_tools: {
-    [key: string]: BuiltInTool;
+    [key: string]: BuiltInTool | null;
   };
   tts?: {
     optimize_streaming_latency?: number;
@@ -2137,7 +2137,7 @@ const AgentDetails = () => {
                 </div>
 
                 <div className="space-y-4">
-                  {(editedForm.tool_ids.length === 0 && Object.keys(editedForm.built_in_tools).length === 0) ? (
+                  {(editedForm.tool_ids.length === 0 && Object.values(editedForm.built_in_tools).filter(tool => tool !== null).length === 0) ? (
                     <div className="text-center py-8 bg-gray-50 dark:bg-dark-100 rounded-xl">
                       <Webhook className="w-12 h-12 text-gray-400 mx-auto mb-2" />
                       <p className="text-sm text-gray-600 dark:text-gray-400">
@@ -2150,7 +2150,9 @@ const AgentDetails = () => {
                   ) : (
                     <div className="divide-y divide-gray-200 dark:divide-dark-100">
                       {/* Built-in Tools */}
-                      {Object.entries(editedForm.built_in_tools).map(([key, builtInTool]) => (
+                      {Object.entries(editedForm.built_in_tools)
+                        .filter(([_, builtInTool]) => builtInTool !== null)
+                        .map(([key, builtInTool]) => (
                         <div
                           key={key}
                           className="py-4 first:pt-0 last:pb-0 hover:bg-gray-50 dark:hover:bg-dark-100 transition-colors rounded-lg"
@@ -2158,7 +2160,7 @@ const AgentDetails = () => {
                           <div className="flex items-center justify-between">
                             <div
                               className="flex items-center space-x-3"
-                              onClick={() => setSelectedTool({ ...builtInTool, type: "system" })}
+                              onClick={() => setSelectedTool({ ...builtInTool!, type: "system" })}
                               style={{ cursor: "pointer" }}
                             >
                               <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-green-500/20 to-green-500/10 dark:from-green-500/30 dark:to-green-500/20 flex items-center justify-center">
@@ -2166,13 +2168,13 @@ const AgentDetails = () => {
                               </div>
                               <div>
                                 <h4 className="text-sm font-medium text-gray-900 dark:text-white">
-                                  {builtInTool?.name}
+                                  {builtInTool!.name}
                                   <span className="ml-2 text-xs bg-green-100 dark:bg-green-500/20 text-green-800 dark:text-green-300 px-2 py-0.5 rounded-full">
                                     System
                                   </span>
                                 </h4>
                                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                                  {builtInTool?.description || `Built-in ${builtInTool?.name} tool`}
+                                  {builtInTool!.description || `Built-in ${builtInTool!.name} tool`}
                                 </p>
                               </div>
                             </div>
@@ -2181,8 +2183,9 @@ const AgentDetails = () => {
                                 onClick={(e) => {
                                   e.preventDefault();
                                   e.stopPropagation();
-                                  const { [key]: _, ...rest } = editedForm.built_in_tools;
-                                  handleChange("built_in_tools", rest);
+                                  const updatedBuiltInTools = { ...editedForm.built_in_tools };
+                                  updatedBuiltInTools[key] = null;
+                                  handleChange("built_in_tools", updatedBuiltInTools);
                                 }}
                                 className="p-2 text-gray-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
                               >
@@ -2191,7 +2194,7 @@ const AgentDetails = () => {
                               <ChevronRight
                                 className="w-5 h-5 text-gray-400 dark:text-gray-500"
                                 style={{ cursor: "pointer" }}
-                                onClick={() => setSelectedTool({ ...builtInTool, type: "system" })}
+                                onClick={() => setSelectedTool({ ...builtInTool!, type: "system" })}
                               />
                             </div>
                           </div>

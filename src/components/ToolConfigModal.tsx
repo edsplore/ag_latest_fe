@@ -60,7 +60,7 @@ interface ToolConfigModalProps {
   agentId?: string;
   onSave: (updatedTool: any, updatedBuiltInTools: any) => void;
   toolIds: string[];
-  builtInTools: any;
+  builtInTools: { [key: string]: BuiltInTool | null };
 }
 
 const validateToolName = (name: string, type: string): string | null => {
@@ -96,9 +96,11 @@ const getAllToolTypeOptions = () => [
 interface BuiltInTool {
   name: string;
   description: string;
-  type: string;
+  type: "system";
   response_timeout_secs: number;
-  params: any;
+  params: {
+    system_tool_type: string;
+  };
 }
 
 export const ToolConfigModal = ({
@@ -110,7 +112,7 @@ export const ToolConfigModal = ({
   agentId,
   toolIds,
   builtInTools
-}: ToolConfigModalProps & { existingTools?: Tool[], toolIds: string[], builtInTools: any }) => {
+}: ToolConfigModalProps & { existingTools?: Tool[], toolIds: string[], builtInTools: { [key: string]: BuiltInTool | null } }) => {
 
   const toolTypeOptions = getAllToolTypeOptions().filter(option => {
     if(option.value === 'webhook') return "webhook";
