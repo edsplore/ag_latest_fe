@@ -182,7 +182,7 @@ export const ToolConfigModal = ({
       if (!user) return;
       
       try {
-        const response = await fetch(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000'}/tools/${user.uid}`, {
+        const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/tools/${user.uid}`, {
           headers: {
             Authorization: `Bearer ${await user.getIdToken()}`,
           },
@@ -190,7 +190,7 @@ export const ToolConfigModal = ({
         
         if (response.ok) {
           const data = await response.json();
-          setUserTools(data.tools || []);
+          setUserTools(data.tool_config || []);
         }
       } catch (error) {
         console.error('Error fetching user tools:', error);
@@ -214,7 +214,7 @@ export const ToolConfigModal = ({
 
       setLoadingToolDetails(true);
       try {
-        const response = await fetch(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000'}/tools/${user.uid}/${toolId}`, {
+        const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/tools/${user.uid}/${toolId}`, {
           headers: {
             Authorization: `Bearer ${await user.getIdToken()}`,
           },
@@ -222,7 +222,7 @@ export const ToolConfigModal = ({
         
         if (response.ok) {
           const toolDetails = await response.json();
-          setToolDetailsCache(prev => ({ ...prev, [toolId]: toolDetails }));
+          setToolDetailsCache(prev => ({ ...prev, [toolId]: toolDetails.tool_config }));
           setSelectedToolDetails(toolDetails);
         }
       } catch (error) {
@@ -311,13 +311,13 @@ export const ToolConfigModal = ({
           return;
         }
 
-        const response = await fetch(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000'}/tools/${user.uid}`, {
+        const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/tools/create/`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${await user.getIdToken()}`,
           },
-          body: JSON.stringify(newToolConfig),
+          body: JSON.stringify({tool_config: newToolConfig, user_id: user.uid}),
         });
 
         if (!response.ok) {
@@ -338,10 +338,9 @@ export const ToolConfigModal = ({
           name: "GHL_BOOKING",
           description: "Create a booking in GHL calendar",
           type: "webhook",
-          expects_response: true,
           response_timeout_secs: 20,
           api_schema: {
-            url: `${import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000'}/ghl/book/`,
+            url: `${import.meta.env.VITE_BACKEND_URL}/ghl/book/`,
             method: 'POST',
             request_body_schema: {
               type: 'object',
@@ -403,13 +402,13 @@ export const ToolConfigModal = ({
           }
         };
 
-        const response = await fetch(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000'}/tools/${user.uid}`, {
+        const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/tools/create/`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${await user.getIdToken()}`,
           },
-          body: JSON.stringify(ghlToolConfig),
+          body: JSON.stringify({tool_config: ghlToolConfig, user_id: user.uid}),
         });
 
         if (!response.ok) {
@@ -423,7 +422,7 @@ export const ToolConfigModal = ({
         // Handle existing tool ID selection or update
         if (editingTool?.type === 'tool_id' && selectedToolDetails) {
           // Update existing tool
-          const response = await fetch(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000'}/tools/${user.uid}/${selectedToolDetails.id}`, {
+          const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/tools/${user.uid}/${selectedToolDetails.id}`, {
             method: 'PATCH',
             headers: {
               'Content-Type': 'application/json',
