@@ -442,13 +442,34 @@ export const ToolConfigModal = ({
         // Handle existing tool ID selection or update
         if (editingTool?.type === 'tool_id' && selectedToolDetails) {
           // Update existing tool
+          let updatedToolDetails = { ...selectedToolDetails };
+          
+          // Update GHL configuration if it's a GHL tool
+          if (selectedToolDetails.name === 'GHL_BOOKING' && selectedToolDetails.api_schema?.request_body_schema?.properties) {
+            updatedToolDetails.api_schema.request_body_schema.properties = {
+              ...selectedToolDetails.api_schema.request_body_schema.properties,
+              apiKey: {
+                ...selectedToolDetails.api_schema.request_body_schema.properties.apiKey,
+                constant_value: ghlConfig.ghlApiKey
+              },
+              calendarId: {
+                ...selectedToolDetails.api_schema.request_body_schema.properties.calendarId,
+                constant_value: ghlConfig.ghlCalendarId
+              },
+              locationId: {
+                ...selectedToolDetails.api_schema.request_body_schema.properties.locationId,
+                constant_value: ghlConfig.ghlLocationId
+              }
+            };
+          }
+
           const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/tools/${user.uid}/${selectedToolDetails.id}`, {
             method: 'PATCH',
             headers: {
               'Content-Type': 'application/json',
               Authorization: `Bearer ${await user.getIdToken()}`,
             },
-            body: JSON.stringify(selectedToolDetails),
+            body: JSON.stringify({ tool_config: updatedToolDetails }),
           });
 
           if (!response.ok) {
@@ -695,6 +716,85 @@ export const ToolConfigModal = ({
                           rows={3}
                         />
                       </div>
+
+                      {/* Show GHL Configuration if it's a GHL tool */}
+                      {selectedToolDetails.name === 'GHL_BOOKING' && (
+                        <div className="space-y-4">
+                          <div className="p-4 bg-green-50 dark:bg-green-500/10 border border-green-100 dark:border-green-500/20 rounded-lg">
+                            <p className="text-sm text-green-800 dark:text-green-200">
+                              GHL Booking Tool Configuration
+                            </p>
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-lato font-semibold text-gray-900 dark:text-white mb-2">
+                              GHL API Key
+                            </label>
+                            <input
+                              type="text"
+                              value={ghlConfig.ghlApiKey}
+                              onChange={(e) => setGhlConfig(prev => ({ ...prev, ghlApiKey: e.target.value }))}
+                              className="input font-lato font-semibold focus:border-primary dark:focus:border-primary-400"
+                              placeholder="Enter your GHL API key"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-lato font-semibold text-gray-900 dark:text-white mb-2">
+                              Calendar ID
+                            </label>
+                            <input
+                              type="text"
+                              value={ghlConfig.ghlCalendarId}
+                              onChange={(e) => setGhlConfig(prev => ({ ...prev, ghlCalendarId: e.target.value }))}
+                              className="input font-lato font-semibold focus:border-primary dark:focus:border-primary-400"
+                              placeholder="Enter GHL calendar ID"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-lato font-semibold text-gray-900 dark:text-white mb-2">
+                              Location ID
+                            </label>
+                            <input
+                              type="text"
+                              value={ghlConfig.ghlLocationId}
+                              onChange={(e) => setGhlConfig(prev => ({ ...prev, ghlLocationId: e.target.value }))}
+                              className="input font-lato font-semibold focus:border-primary dark:focus:border-primary-400"
+                              placeholder="Enter GHL location ID"
+                            />
+                          </div>
+
+                          <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                            <h3 className="text-sm font-lato font-semibold text-gray-900 dark:text-white mb-3">
+                              API Schema (Auto-configured)
+                            </h3>
+                            <div className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                              <strong>Endpoint:</strong> {selectedToolDetails.api_schema?.url || 'N/A'}
+                            </div>
+                            <div className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                              <strong>Method:</strong> {selectedToolDetails.api_schema?.method || 'N/A'}
+                            </div>
+                            <div className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                              <strong>Required Parameters:</strong>
+                            </div>
+                            <pre className="text-sm font-mono bg-white dark:bg-dark-200 p-4 rounded-lg border border-gray-200 dark:border-dark-100 overflow-x-auto">
+                              {`{
+  "startTime": "2021-06-23T03:30:00+05:30",
+  "endTime": "2021-06-23T04:30:00+05:30", 
+  "title": "Test Event",
+  "timezone": "America/New_York",
+  "contactInfo": {
+    "phone": "+15551234567",
+    "firstName": "John",
+    "lastName": "Doe", 
+    "email": "john.doe@example.com"
+  }
+}`}
+                            </pre>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
 
