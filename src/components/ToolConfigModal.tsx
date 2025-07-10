@@ -1,6 +1,7 @@
-import { useState } from "react";
+
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Webhook, Settings } from "lucide-react";
+import { X, Webhook, Settings, Plus } from "lucide-react";
 import { cn } from "../lib/utils";
 import { useAuth } from "../contexts/AuthContext";
 
@@ -12,6 +13,21 @@ interface BuiltInTool {
   params: {
     system_tool_type: string;
   };
+}
+
+interface UserTool {
+  tool_id: string;
+  created_at: string;
+}
+
+interface ToolDetails {
+  id: string;
+  name: string;
+  description: string;
+  type: string;
+  response_timeout_secs?: number;
+  api_schema?: any;
+  // Add other tool properties as needed
 }
 
 interface ToolConfigModalProps {
@@ -105,45 +121,139 @@ export const ToolConfigModal = ({
   builtInTools,
   editingTool
 }: ToolConfigModalProps) => {
-  const [toolType, setToolType] = useState<"tool_id" | string>(() => {
+  const [toolType, setToolType] = useState<string>(() => {
     if (editingTool) {
       if (editingTool.type === 'tool_id') {
-        return "tool_id";
+        return editingTool.id;
       } else {
         return editingTool.key;
       }
     }
-    return "tool_id";
+    return "add_new";
   });
-  const [toolIdInput, setToolIdInput] = useState(() => {
-    if (editingTool?.type === 'tool_id') {
-      return editingTool.id;
-    }
-    return "";
-  });
+  
   const [selectedBuiltInKey, setSelectedBuiltInKey] = useState(() => {
     if (editingTool?.type === 'built_in') {
       return editingTool.key;
     }
     return "";
   });
+  
   const [builtInToolConfig, setBuiltInToolConfig] = useState<BuiltInTool | null>(() => {
     if (editingTool?.type === 'built_in') {
       return builtInTools[editingTool.key] || getBuiltInToolDefaults(editingTool.key);
     }
     return null;
   });
+
+  const [newToolConfig, setNewToolConfig] = useState({
+    name: "",
+    description: "",
+    type: "webhook",
+    response_timeout_secs: 20,
+    api_schema: {
+      url: "",
+      method: "POST",
+      request_body_schema: {
+        type: "object",
+        properties: {},
+        required: []
+      }
+    }
+  });
+
+  const [userTools, setUserTools] = useState<UserTool[]>([]);
+  const [toolDetailsCache, setToolDetailsCache] = useState<{ [key: string]: ToolDetails }>({});
+  const [selectedToolDetails, setSelectedToolDetails] = useState<ToolDetails | null>(null);
+  const [loadingToolDetails, setLoadingToolDetails] = useState(false);
   const [error, setError] = useState("");
 
   const { user } = useAuth();
 
+  // Fetch user tools from Firebase
+  useEffect(() => {
+    const fetchUserTools = async () => {
+      if (!user) return;
+      
+      try {
+        const response = await fetch(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000'}/tools/${user.uid}`, {
+          headers: {
+            Authorization: `Bearer ${await user.getIdToken()}`,
+          },
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          setUserTools(data.tools || []);
+        }
+      } catch (error) {
+        console.error('Error fetching user tools:', error);
+      }
+    };
+
+    if (isOpen) {
+      fetchUserTools();
+    }
+  }, [isOpen, user]);
+
+  // Fetch tool details when a tool ID is selected
+  useEffect(() => {
+    const fetchToolDetails = async (toolId: string) => {
+      if (!user || !toolId || toolDetailsCache[toolId]) {
+        if (toolDetailsCache[toolId]) {
+          setSelectedToolDetails(toolDetailsCache[toolId]);
+        }
+        return;
+      }
+
+      setLoadingToolDetails(true);
+      try {
+        const response = await fetch(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000'}/tools/${user.uid}/${toolId}`, {
+          headers: {
+            Authorization: `Bearer ${await user.getIdToken()}`,
+          },
+        });
+        
+        if (response.ok) {
+          const toolDetails = await response.json();
+          setToolDetailsCache(prev => ({ ...prev, [toolId]: toolDetails }));
+          setSelectedToolDetails(toolDetails);
+        }
+      } catch (error) {
+        console.error('Error fetching tool details:', error);
+        setError('Failed to fetch tool details');
+      } finally {
+        setLoadingToolDetails(false);
+      }
+    };
+
+    if (toolType !== "add_new" && !BUILT_IN_TOOL_KEYS.includes(toolType)) {
+      fetchToolDetails(toolType);
+    }
+  }, [toolType, user, toolDetailsCache]);
+
   const handleClose = () => {
     setError("");
     if (!editingTool) {
-      setToolType("tool_id");
-      setToolIdInput("");
+      setToolType("add_new");
       setSelectedBuiltInKey("");
       setBuiltInToolConfig(null);
+      setSelectedToolDetails(null);
+      setNewToolConfig({
+        name: "",
+        description: "",
+        type: "webhook",
+        response_timeout_secs: 20,
+        api_schema: {
+          url: "",
+          method: "POST",
+          request_body_schema: {
+            type: "object",
+            properties: {},
+            required: []
+          }
+        }
+      });
     }
     onClose();
   };
@@ -151,10 +261,10 @@ export const ToolConfigModal = ({
   const handleToolTypeChange = (type: string) => {
     setToolType(type);
     setError("");
+    setSelectedToolDetails(null);
 
     if (BUILT_IN_TOOL_KEYS.includes(type)) {
       setSelectedBuiltInKey(type);
-      // Load existing config or use defaults
       const existingConfig = builtInTools[type];
       setBuiltInToolConfig(existingConfig || getBuiltInToolDefaults(type));
     } else {
@@ -163,59 +273,105 @@ export const ToolConfigModal = ({
     }
   };
 
-  const handleSaveAndClose = () => {
-    if (toolType === "tool_id") {
-      if (!toolIdInput.trim()) {
-        setError("Tool ID is required");
-        return;
-      }
+  const handleSaveAndClose = async () => {
+    if (!user) return;
 
-      // If editing, allow the same ID, otherwise check for duplicates
-      if (!editingTool && toolIds.includes(toolIdInput.trim())) {
-        setError("Tool ID already exists");
-        return;
-      }
-
-      let updatedToolIds = [...toolIds];
-      
-      if (editingTool?.type === 'tool_id') {
-        // Replace the existing tool ID
-        const index = updatedToolIds.indexOf(editingTool.id);
-        if (index !== -1) {
-          updatedToolIds[index] = toolIdInput.trim();
+    try {
+      if (BUILT_IN_TOOL_KEYS.includes(toolType) && builtInToolConfig) {
+        // Handle built-in tool
+        const updatedBuiltInTools = {
+          ...builtInTools,
+          [toolType]: builtInToolConfig
+        };
+        onSave(toolIds, updatedBuiltInTools);
+      } else if (toolType === "add_new") {
+        // Create new tool
+        if (!newToolConfig.name.trim()) {
+          setError("Tool name is required");
+          return;
         }
+
+        const response = await fetch(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000'}/tools/${user.uid}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${await user.getIdToken()}`,
+          },
+          body: JSON.stringify(newToolConfig),
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to create tool');
+        }
+
+        const createdTool = await response.json();
+        const updatedToolIds = [...toolIds, createdTool.id];
+        onSave(updatedToolIds, builtInTools);
       } else {
-        // Add new tool ID
-        updatedToolIds.push(toolIdInput.trim());
+        // Handle existing tool ID selection or update
+        if (editingTool?.type === 'tool_id' && selectedToolDetails) {
+          // Update existing tool
+          const response = await fetch(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000'}/tools/${user.uid}/${selectedToolDetails.id}`, {
+            method: 'PATCH',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${await user.getIdToken()}`,
+            },
+            body: JSON.stringify(selectedToolDetails),
+          });
+
+          if (!response.ok) {
+            throw new Error('Failed to update tool');
+          }
+        }
+
+        // Add tool ID to agent if not already present
+        if (!toolIds.includes(toolType)) {
+          const updatedToolIds = [...toolIds, toolType];
+          onSave(updatedToolIds, builtInTools);
+        } else {
+          onSave(toolIds, builtInTools);
+        }
       }
 
-      onSave(updatedToolIds, builtInTools);
-    } else if (BUILT_IN_TOOL_KEYS.includes(toolType) && builtInToolConfig) {
-      const updatedBuiltInTools = {
-        ...builtInTools,
-        [toolType]: builtInToolConfig
-      };
-      onSave(toolIds, updatedBuiltInTools);
+      handleClose();
+    } catch (error) {
+      console.error('Error saving tool:', error);
+      setError('Failed to save tool');
     }
-
-    handleClose();
   };
 
   const getToolTypeOptions = () => {
     const options = [
-      { value: "tool_id", label: "Tool ID" }
+      { value: "add_new", label: "➕ Add New Tool", icon: Plus }
     ];
 
-    // Add built-in tool keys that are not already configured
+    // Add user's available tools
+    userTools.forEach(userTool => {
+      if (!toolIds.includes(userTool.tool_id)) {
+        options.push({
+          value: userTool.tool_id,
+          label: userTool.tool_id,
+          icon: Webhook
+        });
+      }
+    });
+
+    // Add built-in tool keys
     BUILT_IN_TOOL_KEYS.forEach(key => {
       options.push({
         value: key,
-        label: key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+        label: key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+        icon: Settings
       });
     });
 
     return options;
   };
+
+  const isBuiltInTool = BUILT_IN_TOOL_KEYS.includes(toolType);
+  const isNewTool = toolType === "add_new";
+  const isExistingTool = !isBuiltInTool && !isNewTool;
 
   return (
     <AnimatePresence>
@@ -241,10 +397,12 @@ export const ToolConfigModal = ({
               <div className="p-6 flex justify-between items-center">
                 <div className="flex items-center space-x-4">
                   <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 dark:from-primary/30 dark:to-primary/20 flex items-center justify-center">
-                    {toolType === "tool_id" ? (
-                      <Webhook className="w-6 h-6 text-primary dark:text-primary-400" />
-                    ) : (
+                    {isNewTool ? (
+                      <Plus className="w-6 h-6 text-primary dark:text-primary-400" />
+                    ) : isBuiltInTool ? (
                       <Settings className="w-6 h-6 text-primary dark:text-primary-400" />
+                    ) : (
+                      <Webhook className="w-6 h-6 text-primary dark:text-primary-400" />
                     )}
                   </div>
                   <div>
@@ -252,7 +410,7 @@ export const ToolConfigModal = ({
                       {editingTool ? 'Edit Tool' : 'Add Tool'}
                     </h2>
                     <p className="text-sm text-gray-500 dark:text-gray-400">
-                      {editingTool ? 'Edit the selected tool configuration' : 'Add a tool ID or configure a built-in tool'}
+                      {editingTool ? 'Edit the selected tool configuration' : 'Add a tool to your agent'}
                     </p>
                   </div>
                 </div>
@@ -296,30 +454,119 @@ export const ToolConfigModal = ({
                     </select>
                   </div>
 
-                  {/* Tool ID Input */}
-                  {toolType === "tool_id" && (
-                    <div>
-                      <label className="block text-sm font-lato font-semibold text-gray-900 dark:text-white mb-2">
-                        Tool ID
-                      </label>
-                      <input
-                        type="text"
-                        value={toolIdInput}
-                        onChange={(e) => {
-                          setToolIdInput(e.target.value);
-                          setError("");
-                        }}
-                        className="input font-lato font-semibold focus:border-primary dark:focus:border-primary-400"
-                        placeholder="Enter tool ID"
-                      />
-                      <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
-                        Enter the ID of an external tool/webhook to include
+                  {/* Loading Tool Details */}
+                  {loadingToolDetails && (
+                    <div className="p-4 bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20 rounded-lg">
+                      <p className="text-sm text-blue-600 dark:text-blue-400">
+                        Loading tool details...
                       </p>
                     </div>
                   )}
 
+                  {/* New Tool Configuration */}
+                  {isNewTool && (
+                    <div className="space-y-4">
+                      <div className="p-4 bg-green-50 dark:bg-green-500/10 border border-green-100 dark:border-green-500/20 rounded-lg">
+                        <p className="text-sm text-green-800 dark:text-green-200">
+                          Create a new custom tool with your own configuration.
+                        </p>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-lato font-semibold text-gray-900 dark:text-white mb-2">
+                          Tool Name
+                        </label>
+                        <input
+                          type="text"
+                          value={newToolConfig.name}
+                          onChange={(e) => setNewToolConfig(prev => ({ ...prev, name: e.target.value }))}
+                          className="input font-lato font-semibold focus:border-primary dark:focus:border-primary-400"
+                          placeholder="Enter tool name"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-lato font-semibold text-gray-900 dark:text-white mb-2">
+                          Description
+                        </label>
+                        <textarea
+                          value={newToolConfig.description}
+                          onChange={(e) => setNewToolConfig(prev => ({ ...prev, description: e.target.value }))}
+                          className="input font-lato font-semibold focus:border-primary dark:focus:border-primary-400"
+                          rows={3}
+                          placeholder="Describe what this tool does"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-lato font-semibold text-gray-900 dark:text-white mb-2">
+                          Webhook URL
+                        </label>
+                        <input
+                          type="url"
+                          value={newToolConfig.api_schema?.url || ""}
+                          onChange={(e) => setNewToolConfig(prev => ({
+                            ...prev,
+                            api_schema: { ...prev.api_schema, url: e.target.value }
+                          }))}
+                          className="input font-lato font-semibold focus:border-primary dark:focus:border-primary-400"
+                          placeholder="https://your-webhook-url.com"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-lato font-semibold text-gray-900 dark:text-white mb-2">
+                          Response Timeout (seconds)
+                        </label>
+                        <input
+                          type="number"
+                          value={newToolConfig.response_timeout_secs}
+                          onChange={(e) => setNewToolConfig(prev => ({ ...prev, response_timeout_secs: parseInt(e.target.value) || 20 }))}
+                          className="input font-lato font-semibold focus:border-primary dark:focus:border-primary-400"
+                          min="1"
+                          max="120"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Existing Tool Details */}
+                  {isExistingTool && selectedToolDetails && (
+                    <div className="space-y-4">
+                      <div className="p-4 bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20 rounded-lg">
+                        <p className="text-sm text-blue-800 dark:text-blue-200">
+                          Using existing tool: {selectedToolDetails.name}
+                        </p>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-lato font-semibold text-gray-900 dark:text-white mb-2">
+                          Tool Name
+                        </label>
+                        <input
+                          type="text"
+                          value={selectedToolDetails.name}
+                          onChange={(e) => setSelectedToolDetails(prev => prev ? { ...prev, name: e.target.value } : null)}
+                          className="input font-lato font-semibold focus:border-primary dark:focus:border-primary-400"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-lato font-semibold text-gray-900 dark:text-white mb-2">
+                          Description
+                        </label>
+                        <textarea
+                          value={selectedToolDetails.description}
+                          onChange={(e) => setSelectedToolDetails(prev => prev ? { ...prev, description: e.target.value } : null)}
+                          className="input font-lato font-semibold focus:border-primary dark:focus:border-primary-400"
+                          rows={3}
+                        />
+                      </div>
+                    </div>
+                  )}
+
                   {/* Built-in Tool Configuration */}
-                  {BUILT_IN_TOOL_KEYS.includes(toolType) && builtInToolConfig && (
+                  {isBuiltInTool && builtInToolConfig && (
                     <div className="space-y-4">
                       <div className="p-4 bg-green-50 dark:bg-green-500/10 border border-green-100 dark:border-green-500/20 rounded-lg">
                         <p className="text-sm text-green-800 dark:text-green-200">
@@ -327,7 +574,6 @@ export const ToolConfigModal = ({
                         </p>
                       </div>
 
-                      {/* Editable Description */}
                       <div>
                         <label className="block text-sm font-lato font-semibold text-gray-900 dark:text-white mb-2">
                           Description
@@ -346,7 +592,6 @@ export const ToolConfigModal = ({
                         />
                       </div>
 
-                      {/* Response Timeout */}
                       <div>
                         <label className="block text-sm font-lato font-semibold text-gray-900 dark:text-white mb-2">
                           Response Timeout (seconds)
@@ -364,18 +609,14 @@ export const ToolConfigModal = ({
                           min="1"
                           max="120"
                         />
-                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
-                          Maximum time to wait for the tool to respond (1-120 seconds)
-                        </p>
                       </div>
 
-                      {/* Disabled/Fixed Fields */}
+                      {/* Fixed Fields */}
                       <div className="pt-4 border-t border-gray-200 dark:border-dark-100">
                         <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
                           The following fields are system-defined and cannot be modified:
                         </p>
                         
-                        {/* Fixed Name */}
                         <div className="mb-4">
                           <label className="block text-sm font-lato font-semibold text-gray-900 dark:text-white mb-2">
                             Name
@@ -388,7 +629,6 @@ export const ToolConfigModal = ({
                           />
                         </div>
 
-                        {/* Fixed Type */}
                         <div className="mb-4">
                           <label className="block text-sm font-lato font-semibold text-gray-900 dark:text-white mb-2">
                             Type
@@ -401,7 +641,6 @@ export const ToolConfigModal = ({
                           />
                         </div>
 
-                        {/* System Tool Type */}
                         <div>
                           <label className="block text-sm font-lato font-semibold text-gray-900 dark:text-white mb-2">
                             System Tool Type
@@ -432,14 +671,16 @@ export const ToolConfigModal = ({
                 <button
                   onClick={handleSaveAndClose}
                   disabled={
-                    (toolType === "tool_id" && !toolIdInput.trim()) ||
-                    (BUILT_IN_TOOL_KEYS.includes(toolType) && !builtInToolConfig)
+                    loadingToolDetails ||
+                    (isNewTool && !newToolConfig.name.trim()) ||
+                    (isBuiltInTool && !builtInToolConfig)
                   }
                   className={cn(
                     "px-4 py-2 text-sm font-lato font-semibold text-white bg-primary rounded-lg",
                     "hover:bg-primary-600 transition-colors",
-                    ((toolType === "tool_id" && !toolIdInput.trim()) ||
-                     (BUILT_IN_TOOL_KEYS.includes(toolType) && !builtInToolConfig)) &&
+                    (loadingToolDetails ||
+                     (isNewTool && !newToolConfig.name.trim()) ||
+                     (isBuiltInTool && !builtInToolConfig)) &&
                       "opacity-50 cursor-not-allowed",
                   )}
                 >
