@@ -1,6 +1,12 @@
 
 import React, { useState, useEffect } from "react";
 import { loadStripe } from "@stripe/stripe-js";
+import {
+  Elements,
+  CardElement,
+  useStripe,
+  useElements,
+} from "@stripe/react-stripe-js";
 import { useAuth } from "../contexts/AuthContext";
 import { doc, updateDoc, getDoc } from "firebase/firestore";
 import { db } from "../lib/firebase";
@@ -47,12 +53,16 @@ const PaymentForm: React.FC<{ onSuccess: () => void }> = ({ onSuccess }) => {
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [error, setError] = useState<string>("");
   const [success, setSuccess] = useState<boolean>(false);
+  const stripe = useStripe();
+  const elements = useElements();
   const { getEffectiveUser } = useAuth();
   const user = getEffectiveUser();
 
-  const handleCheckoutRedirect = async () => {
-    if (!user) {
-      setError("Please log in to continue with payment.");
+  const handlePaymentSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    
+    if (!stripe || !elements || !user) {
+      setError("Payment system not ready. Please try again.");
       return;
     }
 
@@ -60,8 +70,27 @@ const PaymentForm: React.FC<{ onSuccess: () => void }> = ({ onSuccess }) => {
     setError("");
 
     try {
-      // Create checkout session on your backend
-      const response = await fetch(`${BACKEND_URL}/create-checkout-session`, {
+      const cardElement = elements.getElement(CardElement);
+      if (!cardElement) {
+        setError("Card information is required.");
+        setIsProcessing(false);
+        return;
+      }
+
+      // Create payment method
+      const { error: paymentMethodError, paymentMethod } = await stripe.createPaymentMethod({
+        type: "card",
+        card: cardElement,
+      });
+
+      if (paymentMethodError) {
+        setError(paymentMethodError.message || "An error occurred while processing your payment.");
+        setIsProcessing(false);
+        return;
+      }
+
+      // Create payment intent on your backend
+      const response = await fetch(`${BACKEND_URL}/create-payment-intent`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -70,13 +99,11 @@ const PaymentForm: React.FC<{ onSuccess: () => void }> = ({ onSuccess }) => {
         body: JSON.stringify({
           amount: 5000, // $50.00 in cents
           currency: "usd",
-          userId: user.uid,
-          successUrl: `${window.location.origin}/payment?success=true`,
-          cancelUrl: `${window.location.origin}/payment?canceled=true`,
+          payment_method_id: paymentMethod.id,
         }),
       });
 
-      const { url, error: backendError } = await response.json();
+      const { client_secret, error: backendError } = await response.json();
 
       if (backendError) {
         setError(backendError);
@@ -84,11 +111,32 @@ const PaymentForm: React.FC<{ onSuccess: () => void }> = ({ onSuccess }) => {
         return;
       }
 
-      // Redirect to Stripe Checkout
-      window.location.href = url;
+      // Confirm payment
+      const { error: confirmError, paymentIntent } = await stripe.confirmCardPayment(client_secret);
+
+      if (confirmError) {
+        setError(confirmError.message || "Payment failed. Please try again.");
+        setIsProcessing(false);
+        return;
+      }
+
+      if (paymentIntent.status === "succeeded") {
+        // Update user document in Firestore
+        const userDocRef = doc(db, "users", user.uid);
+        await updateDoc(userDocRef, {
+          hasToppedUp: true,
+          updatedAt: new Date(),
+        });
+
+        setSuccess(true);
+        setTimeout(() => {
+          onSuccess();
+        }, 2000);
+      }
     } catch (err: any) {
-      console.error("Checkout error:", err);
+      console.error("Payment error:", err);
       setError("An unexpected error occurred. Please try again.");
+    } finally {
       setIsProcessing(false);
     }
   };
@@ -194,7 +242,32 @@ const PaymentForm: React.FC<{ onSuccess: () => void }> = ({ onSuccess }) => {
           </motion.div>
         )}
 
-        <div className="space-y-6">
+        <form onSubmit={handlePaymentSubmit} className="space-y-6">
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-3">
+              Card Information
+            </label>
+            <div className="relative">
+              <div className="absolute inset-0 bg-gradient-to-r from-primary/10 to-primary-600/10 rounded-xl blur opacity-50" />
+              <div className="relative p-4 bg-white/5 border border-white/10 rounded-xl backdrop-blur-sm">
+                <CardElement
+                  options={{
+                    style: {
+                      base: {
+                        fontSize: "16px",
+                        color: "#ffffff",
+                        fontFamily: '"Inter", sans-serif',
+                        "::placeholder": {
+                          color: "#9ca3af",
+                        },
+                      },
+                    },
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+
           <div className="bg-gradient-to-r from-primary/10 to-primary-600/10 rounded-xl p-4 border border-primary/20">
             <div className="flex justify-between items-center">
               <span className="text-gray-300 font-medium">Amount:</span>
@@ -206,8 +279,8 @@ const PaymentForm: React.FC<{ onSuccess: () => void }> = ({ onSuccess }) => {
           </div>
 
           <motion.button
-            onClick={handleCheckoutRedirect}
-            disabled={isProcessing}
+            type="submit"
+            disabled={!stripe || isProcessing}
             whileHover={{ scale: isProcessing ? 1 : 1.02 }}
             whileTap={{ scale: isProcessing ? 1 : 0.98 }}
             className="w-full group relative px-6 py-4 rounded-xl bg-gradient-to-r from-primary to-primary-600 text-white font-semibold text-lg transition-all duration-300 overflow-hidden hover:shadow-2xl hover:shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
@@ -217,7 +290,7 @@ const PaymentForm: React.FC<{ onSuccess: () => void }> = ({ onSuccess }) => {
               {isProcessing ? (
                 <>
                   <Loader className="animate-spin w-5 h-5 mr-3" />
-                  <span>Redirecting to Checkout...</span>
+                  <span>Processing Payment...</span>
                 </>
               ) : (
                 <>
@@ -228,11 +301,11 @@ const PaymentForm: React.FC<{ onSuccess: () => void }> = ({ onSuccess }) => {
               )}
             </div>
           </motion.button>
-        </div>
+        </form>
 
         <div className="mt-6 text-center">
           <p className="text-xs text-gray-400">
-            Secured by Stripe • You'll be redirected to secure checkout
+            Secured by Stripe • 256-bit SSL encryption
           </p>
         </div>
       </div>
@@ -249,37 +322,7 @@ const Payment: React.FC = () => {
 
   useEffect(() => {
     checkUserToppedUpStatus();
-    checkPaymentStatus();
   }, [user]);
-
-  const checkPaymentStatus = () => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const success = urlParams.get('success');
-    const canceled = urlParams.get('canceled');
-
-    if (success === 'true') {
-      // Payment was successful, update user status
-      updateUserToppedUpStatus();
-    } else if (canceled === 'true') {
-      // Payment was canceled, show appropriate message
-      console.log('Payment was canceled');
-    }
-  };
-
-  const updateUserToppedUpStatus = async () => {
-    if (!user) return;
-
-    try {
-      const userDocRef = doc(db, "users", user.uid);
-      await updateDoc(userDocRef, {
-        hasToppedUp: true,
-        updatedAt: new Date(),
-      });
-      setHasToppedUp(true);
-    } catch (error) {
-      console.error("Error updating user topped up status:", error);
-    }
-  };
 
   const checkUserToppedUpStatus = async () => {
     if (!user) return;
@@ -450,4 +493,12 @@ const Payment: React.FC = () => {
   );
 };
 
-export default Payment;
+const PaymentWrapper: React.FC = () => {
+  return (
+    <Elements stripe={stripePromise}>
+      <Payment />
+    </Elements>
+  );
+};
+
+export default PaymentWrapper;
