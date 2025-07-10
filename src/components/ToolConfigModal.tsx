@@ -216,6 +216,8 @@ export const ToolConfigModal = ({
               ghlCalendarId: props.calendarId?.constant_value || '',
               ghlLocationId: props.locationId?.constant_value || ''
             });
+            // Auto-update tool type to ghl_booking for existing GHL tools
+            setToolType('ghl_booking');
           }
         }
         return;
@@ -243,6 +245,8 @@ export const ToolConfigModal = ({
               ghlCalendarId: props.calendarId?.constant_value || '',
               ghlLocationId: props.locationId?.constant_value || ''
             });
+            // Auto-update tool type to ghl_booking for existing GHL tools
+            setToolType('ghl_booking');
           }
         }
       } catch (error) {
@@ -524,8 +528,8 @@ export const ToolConfigModal = ({
 
   const isBuiltInTool = BUILT_IN_TOOL_KEYS.includes(toolType);
   const isNewTool = toolType === "add_new";
-  const isGhlTool = toolType === "ghl_booking";
-  const isExistingTool = !isBuiltInTool && !isNewTool && !isGhlTool;
+  const isGhlTool = toolType === "ghl_booking" || selectedToolDetails?.name === 'GHL_BOOKING';
+  const isExistingTool = !isBuiltInTool && !isNewTool && toolType !== "ghl_booking" && selectedToolDetails?.name !== 'GHL_BOOKING';
 
   return (
     <AnimatePresence>
@@ -684,51 +688,43 @@ export const ToolConfigModal = ({
                     </div>
                   )}
 
-                  {/* Existing Tool Details */}
-                  {isExistingTool && selectedToolDetails && (
-                    <div className="space-y-4">
-                      <div className="p-4 bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20 rounded-lg">
-                        <p className="text-sm text-blue-800 dark:text-blue-200">
-                          Using existing tool: {selectedToolDetails.name}
-                        </p>
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-lato font-semibold text-gray-900 dark:text-white mb-2">
-                          Tool Name
-                        </label>
-                        <input
-                          type="text"
-                          value={selectedToolDetails.name}
-                          onChange={(e) => setSelectedToolDetails(prev => prev ? { ...prev, name: e.target.value } : null)}
-                          className="input font-lato font-semibold focus:border-primary dark:focus:border-primary-400"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-lato font-semibold text-gray-900 dark:text-white mb-2">
-                          Description
-                        </label>
-                        <textarea
-                          value={selectedToolDetails.description}
-                          onChange={(e) => setSelectedToolDetails(prev => prev ? { ...prev, description: e.target.value } : null)}
-                          className="input font-lato font-semibold focus:border-primary dark:focus:border-primary-400"
-                          rows={3}
-                        />
-                      </div>
-
-                      
-                    </div>
-                  )}
-
                   {/* GHL Tool Configuration */}
-                  {(isGhlTool || (isExistingTool && selectedToolDetails?.name === 'GHL_BOOKING')) && (
+                  {(isGhlTool || (selectedToolDetails?.name === 'GHL_BOOKING')) && (
                     <div className="space-y-4">
                       <div className="p-4 bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20 rounded-lg">
                         <p className="text-sm text-blue-800 dark:text-blue-200">
                           {isGhlTool ? 'Create a GHL booking tool with automatic schema configuration.' : 'GHL Booking Tool Configuration'}
                         </p>
                       </div>
+
+                      {/* Show tool name and description for existing GHL tools */}
+                      {selectedToolDetails && (
+                        <>
+                          <div>
+                            <label className="block text-sm font-lato font-semibold text-gray-900 dark:text-white mb-2">
+                              Tool Name
+                            </label>
+                            <input
+                              type="text"
+                              value={selectedToolDetails.name}
+                              onChange={(e) => setSelectedToolDetails(prev => prev ? { ...prev, name: e.target.value } : null)}
+                              className="input font-lato font-semibold focus:border-primary dark:focus:border-primary-400"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-lato font-semibold text-gray-900 dark:text-white mb-2">
+                              Description
+                            </label>
+                            <textarea
+                              value={selectedToolDetails.description}
+                              onChange={(e) => setSelectedToolDetails(prev => prev ? { ...prev, description: e.target.value } : null)}
+                              className="input font-lato font-semibold focus:border-primary dark:focus:border-primary-400"
+                              rows={3}
+                            />
+                          </div>
+                        </>
+                      )}
 
                       <div>
                         <label className="block text-sm font-lato font-semibold text-gray-900 dark:text-white mb-2">
@@ -771,9 +767,9 @@ export const ToolConfigModal = ({
 
                       <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
                         <h3 className="text-sm font-lato font-semibold text-gray-900 dark:text-white mb-3">
-                          {isExistingTool ? 'API Schema (Auto-configured)' : 'Required Parameters (Auto-configured)'}
+                          {selectedToolDetails ? 'API Schema (Auto-configured)' : 'Required Parameters (Auto-configured)'}
                         </h3>
-                        {isExistingTool && selectedToolDetails?.api_schema && (
+                        {selectedToolDetails?.api_schema && (
                           <>
                             <div className="text-sm text-gray-600 dark:text-gray-400 mb-2">
                               <strong>Endpoint:</strong> {selectedToolDetails.api_schema?.url || 'N/A'}
@@ -800,6 +796,41 @@ export const ToolConfigModal = ({
   }
 }`}
                         </pre>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Non-GHL Existing Tool Details */}
+                  {isExistingTool && selectedToolDetails && selectedToolDetails.name !== 'GHL_BOOKING' && (
+                    <div className="space-y-4">
+                      <div className="p-4 bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20 rounded-lg">
+                        <p className="text-sm text-blue-800 dark:text-blue-200">
+                          Using existing tool: {selectedToolDetails.name}
+                        </p>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-lato font-semibold text-gray-900 dark:text-white mb-2">
+                          Tool Name
+                        </label>
+                        <input
+                          type="text"
+                          value={selectedToolDetails.name}
+                          onChange={(e) => setSelectedToolDetails(prev => prev ? { ...prev, name: e.target.value } : null)}
+                          className="input font-lato font-semibold focus:border-primary dark:focus:border-primary-400"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-lato font-semibold text-gray-900 dark:text-white mb-2">
+                          Description
+                        </label>
+                        <textarea
+                          value={selectedToolDetails.description}
+                          onChange={(e) => setSelectedToolDetails(prev => prev ? { ...prev, description: e.target.value } : null)}
+                          className="input font-lato font-semibold focus:border-primary dark:focus:border-primary-400"
+                          rows={3}
+                        />
                       </div>
                     </div>
                   )}
