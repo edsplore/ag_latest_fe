@@ -246,6 +246,7 @@ const AgentDetails = () => {
   const [showLanguageDropdown, setShowLanguageDropdown] = useState(false);
   const [selectedTool, setSelectedTool] = useState<any>(null);
   const [isCreatingTool, setIsCreatingTool] = useState(false);
+  const [editingTool, setEditingTool] = useState<{ type: 'tool_id', id: string } | { type: 'built_in', key: string } | null>(null);
   const [showAdvancedVoiceSettings, setShowAdvancedVoiceSettings] = useState(false);
   const [showAdvancedConversationSettings, setShowAdvancedConversationSettings] = useState(false);
   const [showPrivacySettings, setShowPrivacySettings] = useState(false);
@@ -694,6 +695,7 @@ const AgentDetails = () => {
   const handleCreateTool = () => {
     setSelectedTool({});
     setIsCreatingTool(true);
+    setEditingTool(null);
   };
 
   // Handle tool save from modal
@@ -702,6 +704,7 @@ const AgentDetails = () => {
     handleChange("built_in_tools", builtInTools);
     setSelectedTool(null);
     setIsCreatingTool(false);
+    setEditingTool(null);
   };
 
   // Called when user picks a new voice in the VoiceModal
@@ -2146,7 +2149,10 @@ const AgentDetails = () => {
                           <div className="flex items-center justify-between">
                             <div
                               className="flex items-center space-x-3"
-                              onClick={() => setSelectedTool({ ...builtInTool!, type: "system" })}
+                              onClick={() => {
+                                setSelectedTool({ ...builtInTool!, type: "system" });
+                                setEditingTool({ type: 'built_in', key });
+                              }}
                               style={{ cursor: "pointer" }}
                             >
                               <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-green-500/20 to-green-500/10 dark:from-green-500/30 dark:to-green-500/20 flex items-center justify-center">
@@ -2180,7 +2186,10 @@ const AgentDetails = () => {
                               <ChevronRight
                                 className="w-5 h-5 text-gray-400 dark:text-gray-500"
                                 style={{ cursor: "pointer" }}
-                                onClick={() => setSelectedTool({ ...builtInTool!, type: "system" })}
+                                onClick={() => {
+                                  setSelectedTool({ ...builtInTool!, type: "system" });
+                                  setEditingTool({ type: 'built_in', key });
+                                }}
                               />
                             </div>
                           </div>
@@ -2194,7 +2203,13 @@ const AgentDetails = () => {
                           className="py-4 first:pt-0 last:pb-0 hover:bg-gray-50 dark:hover:bg-dark-100 transition-colors rounded-lg"
                         >
                           <div className="flex items-center justify-between">
-                            <div className="flex items-center space-x-3">
+                            <div 
+                              className="flex items-center space-x-3 cursor-pointer"
+                              onClick={() => {
+                                setSelectedTool({ name: toolId, type: "webhook" });
+                                setEditingTool({ type: 'tool_id', id: toolId });
+                              }}
+                            >
                               <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary/20 to-primary/10 dark:from-primary/30 dark:to-primary/20 flex items-center justify-center">
                                 <Webhook className="w-5 h-5 text-primary dark:text-primary-400" />
                               </div>
@@ -2359,12 +2374,14 @@ const AgentDetails = () => {
           onClose={() => {
             setSelectedTool(null);
             setIsCreatingTool(false);
+            setEditingTool(null);
           }}
           tool={selectedTool}
           onSave={handleToolSave}
           agentId={agentId}
           toolIds={editedForm.tool_ids}
           builtInTools={editedForm.built_in_tools}
+          editingTool={editingTool}
         />
       )}
 

@@ -22,6 +22,7 @@ interface ToolConfigModalProps {
   onSave: (toolIds: string[], builtInTools: { [key: string]: BuiltInTool | null }) => void;
   toolIds: string[];
   builtInTools: { [key: string]: BuiltInTool | null };
+  editingTool?: { type: 'tool_id', id: string } | { type: 'built_in', key: string };
 }
 
 const BUILT_IN_TOOL_KEYS = [
@@ -101,22 +102,49 @@ export const ToolConfigModal = ({
   onSave,
   agentId,
   toolIds,
-  builtInTools
+  builtInTools,
+  editingTool
 }: ToolConfigModalProps) => {
-  const [toolType, setToolType] = useState<"tool_id" | string>("tool_id");
-  const [toolIdInput, setToolIdInput] = useState("");
-  const [selectedBuiltInKey, setSelectedBuiltInKey] = useState("");
-  const [builtInToolConfig, setBuiltInToolConfig] = useState<BuiltInTool | null>(null);
+  const [toolType, setToolType] = useState<"tool_id" | string>(() => {
+    if (editingTool) {
+      if (editingTool.type === 'tool_id') {
+        return "tool_id";
+      } else {
+        return editingTool.key;
+      }
+    }
+    return "tool_id";
+  });
+  const [toolIdInput, setToolIdInput] = useState(() => {
+    if (editingTool?.type === 'tool_id') {
+      return editingTool.id;
+    }
+    return "";
+  });
+  const [selectedBuiltInKey, setSelectedBuiltInKey] = useState(() => {
+    if (editingTool?.type === 'built_in') {
+      return editingTool.key;
+    }
+    return "";
+  });
+  const [builtInToolConfig, setBuiltInToolConfig] = useState<BuiltInTool | null>(() => {
+    if (editingTool?.type === 'built_in') {
+      return builtInTools[editingTool.key] || getBuiltInToolDefaults(editingTool.key);
+    }
+    return null;
+  });
   const [error, setError] = useState("");
 
   const { user } = useAuth();
 
   const handleClose = () => {
     setError("");
-    setToolType("tool_id");
-    setToolIdInput("");
-    setSelectedBuiltInKey("");
-    setBuiltInToolConfig(null);
+    if (!editingTool) {
+      setToolType("tool_id");
+      setToolIdInput("");
+      setSelectedBuiltInKey("");
+      setBuiltInToolConfig(null);
+    }
     onClose();
   };
 
@@ -142,12 +170,25 @@ export const ToolConfigModal = ({
         return;
       }
 
-      if (toolIds.includes(toolIdInput.trim())) {
+      // If editing, allow the same ID, otherwise check for duplicates
+      if (!editingTool && toolIds.includes(toolIdInput.trim())) {
         setError("Tool ID already exists");
         return;
       }
 
-      const updatedToolIds = [...toolIds, toolIdInput.trim()];
+      let updatedToolIds = [...toolIds];
+      
+      if (editingTool?.type === 'tool_id') {
+        // Replace the existing tool ID
+        const index = updatedToolIds.indexOf(editingTool.id);
+        if (index !== -1) {
+          updatedToolIds[index] = toolIdInput.trim();
+        }
+      } else {
+        // Add new tool ID
+        updatedToolIds.push(toolIdInput.trim());
+      }
+
       onSave(updatedToolIds, builtInTools);
     } else if (BUILT_IN_TOOL_KEYS.includes(toolType) && builtInToolConfig) {
       const updatedBuiltInTools = {
@@ -208,10 +249,10 @@ export const ToolConfigModal = ({
                   </div>
                   <div>
                     <h2 className="text-xl font-lato font-semibold text-primary dark:text-primary-400">
-                      Add Tool
+                      {editingTool ? 'Edit Tool' : 'Add Tool'}
                     </h2>
                     <p className="text-sm text-gray-500 dark:text-gray-400">
-                      Add a tool ID or configure a built-in tool
+                      {editingTool ? 'Edit the selected tool configuration' : 'Add a tool ID or configure a built-in tool'}
                     </p>
                   </div>
                 </div>
@@ -394,7 +435,7 @@ export const ToolConfigModal = ({
                       "opacity-50 cursor-not-allowed",
                   )}
                 >
-                  Add Tool
+                  {editingTool ? 'Save Changes' : 'Add Tool'}
                 </button>
               </div>
             </div>
