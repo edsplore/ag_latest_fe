@@ -1223,51 +1223,110 @@ export const ToolConfigModal = ({
                           rows={3}
                         />
                       </div>
-                       {selectedToolDetails.api_schema && (
-                        <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                          <h3 className="text-sm font-lato font-semibold text-gray-900 dark:text-white mb-3">
-                            API Schema
-                          </h3>
-                          <div className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-                            <strong>Webhook URL:</strong> {selectedToolDetails.api_schema?.url || 'N/A'}
-                          </div>
-                          <div className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-                            <strong>Method:</strong> {selectedToolDetails.api_schema?.method || 'N/A'}
-                          </div>
-                          <div className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-                            <strong>Request Body Schema:</strong>
-                          </div>
-                          <textarea
-                            value={JSON.stringify(selectedToolDetails.api_schema?.request_body_schema, null, 2)}
-                            onChange={(e) => {
-                              try {
-                                const parsed = JSON.parse(e.target.value);
-                                setJsonError("");
+
+                      {selectedToolDetails.api_schema && (
+                        <div className="space-y-4">
+                          <div>
+                            <label className="block text-sm font-lato font-semibold text-gray-900 dark:text-white mb-2">
+                              Webhook URL <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                              type="url"
+                              value={selectedToolDetails.api_schema?.url || ""}
+                              onChange={(e) => {
+                                const value = e.target.value;
                                 setSelectedToolDetails(prev => {
                                   if (!prev) return prev;
                                   return {
                                     ...prev,
                                     api_schema: {
                                       ...prev.api_schema,
-                                      request_body_schema: parsed
+                                      url: value
                                     }
                                   };
                                 });
-                              } catch (err) {
-                                setJsonError("Invalid JSON format");
-                              }
-                            }}
-                            className={cn(
-                              "input font-mono text-sm h-[400px] focus:border-primary dark:focus:border-primary-400",
-                              jsonError && "border-red-500 dark:border-red-500"
+                                setUrlError(validateUrl(value) || "");
+                              }}
+                              className={cn(
+                                "input font-lato font-semibold focus:border-primary dark:focus:border-primary-400",
+                                urlError && "border-red-500 dark:border-red-500"
+                              )}
+                              placeholder="https://your-webhook-url.com"
+                            />
+                            {urlError && (
+                              <p className="mt-2 text-sm text-red-600 dark:text-red-400">
+                                {urlError}
+                              </p>
                             )}
-                            placeholder="Enter JSON schema..."
-                          />
-                          {jsonError && (
-                            <p className="mt-2 text-sm text-red-600 dark:text-red-400">
-                              {jsonError}
-                            </p>
-                          )}
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-lato font-semibold text-gray-900 dark:text-white mb-2">
+                              Response Timeout (seconds)
+                            </label>
+                            <input
+                              type="number"
+                              value={selectedToolDetails.response_timeout_secs || 20}
+                              onChange={(e) => setSelectedToolDetails(prev => {
+                                if (!prev) return prev;
+                                return {
+                                  ...prev,
+                                  response_timeout_secs: parseInt(e.target.value) || 20
+                                };
+                              })}
+                              className="input font-lato font-semibold focus:border-primary dark:focus:border-primary-400"
+                              min="1"
+                              max="120"
+                            />
+                          </div>
+
+                          <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                            <h3 className="text-sm font-lato font-semibold text-gray-900 dark:text-white mb-3">
+                              Request Body Schema
+                            </h3>
+                            <div className="flex items-center justify-between mb-4">
+                              <p className="text-sm text-gray-500 dark:text-gray-400">
+                                Define the structure of the request body in JSON format
+                              </p>
+                              <button
+                                onClick={() => setShowSampleModal(true)}
+                                className="text-sm text-primary hover:text-primary-600 dark:text-primary-400 dark:hover:text-primary-300 font-lato font-semibold"
+                              >
+                                View Sample Schema
+                              </button>
+                            </div>
+                            <textarea
+                              value={JSON.stringify(selectedToolDetails.api_schema?.request_body_schema, null, 2)}
+                              onChange={(e) => {
+                                try {
+                                  const parsed = JSON.parse(e.target.value);
+                                  setJsonError("");
+                                  setSelectedToolDetails(prev => {
+                                    if (!prev) return prev;
+                                    return {
+                                      ...prev,
+                                      api_schema: {
+                                        ...prev.api_schema,
+                                        request_body_schema: parsed
+                                      }
+                                    };
+                                  });
+                                } catch (err) {
+                                  setJsonError("Invalid JSON format");
+                                }
+                              }}
+                              className={cn(
+                                "input font-mono text-sm h-[400px] focus:border-primary dark:focus:border-primary-400",
+                                jsonError && "border-red-500 dark:border-red-500"
+                              )}
+                              placeholder="Enter JSON schema..."
+                            />
+                            {jsonError && (
+                              <p className="mt-2 text-sm text-red-600 dark:text-red-400">
+                                {jsonError}
+                              </p>
+                            )}
+                          </div>
                         </div>
                       )}
                     </div>
@@ -1383,7 +1442,8 @@ export const ToolConfigModal = ({
                       (isNewTool && (!newToolConfig.name.trim() || !newToolConfig.description.trim() || jsonError || nameError || urlError)) ||
                       (isBuiltInTool && !builtInToolConfig) ||
                       (isGhlTool && (!ghlConfig.ghlApiKey || !ghlConfig.ghlCalendarId || !ghlConfig.ghlLocationId)) ||
-                      (isCalTool && !calConfig.calApiKey)
+                      (isCalTool && !calConfig.calApiKey) ||
+                      (isExistingTool && selectedToolDetails && (!selectedToolDetails.api_schema?.url?.trim() || urlError || jsonError))
                     }
                   className={cn(
                       "px-4 py-2 text-sm font-lato font-semibold text-white bg-primary rounded-lg",
