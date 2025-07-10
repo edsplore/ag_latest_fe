@@ -58,7 +58,9 @@ interface ToolConfigModalProps {
   onClose: () => void;
   tool: Tool;
   agentId?: string;
-  onSave: (updatedTool: Tool) => void;
+  onSave: (updatedTool: any, updatedBuiltInTools: any) => void;
+  toolIds: string[];
+  builtInTools: any;
 }
 
 const validateToolName = (name: string, type: string): string | null => {
@@ -91,14 +93,24 @@ const getAllToolTypeOptions = () => [
   { value: "transfer_call", label: "TRANSFER_CALL" },
 ];
 
+interface BuiltInTool {
+  name: string;
+  description: string;
+  type: string;
+  response_timeout_secs: number;
+  params: any;
+}
+
 export const ToolConfigModal = ({
   isOpen,
   onClose,
   tool,
   onSave,
   existingTools,
-  agentId
-}: ToolConfigModalProps & { existingTools?: Tool[] }) => {
+  agentId,
+  toolIds,
+  builtInTools
+}: ToolConfigModalProps & { existingTools?: Tool[], toolIds: string[], builtInTools: any }) => {
 
   const toolTypeOptions = getAllToolTypeOptions().filter(option => {
     if(option.value === 'webhook') return "webhook";
@@ -159,187 +171,42 @@ export const ToolConfigModal = ({
   };
 
   const handleSaveAndClose = () => {
-    try {
-      const nameValidationError = validateToolName(editedTool.name, editedTool.type);
-      if (nameValidationError && editedTool.type === "webhook") {
-        setNameError(nameValidationError);
-        return;
-      }
+    if (nameError || jsonError) return;
 
-      // Determine backend configuration based on tool name
-      let backendConfig: { name: string; type: string; expects_response?: boolean; api_schema?: any, params?: any, response_timeout_secs?: number } = { name: '', type: '' };
-
-      let updatedTool: Tool;
-
-      if (editedTool.type === "end_call") {
-        const endCallConfig = {
-          name: "end_call",
-          type: "system",
-          description: "End the current call",
-          params: {
-            system_tool_type: "end_call"
-          },
-          response_timeout_secs: editedTool.response_timeout_secs || 20,
-        };
-        updatedTool = endCallConfig;
-      } else if (editedTool.type === "transfer_call") {
-        const transferConfig = {
-          name: "transfer_call", 
-          type: "system",
-          description: "Transfer the current call to human",
-          params: {
-            system_tool_type: "transfer_to_number",
-            transfers: [{
-              phone_number: editedTool.params?.transfers?.[0]?.phone_number || '',
-              condition: "transfer_to_number"
-            }]
-          },
-          response_timeout_secs: editedTool.response_timeout_secs || 20,
-        };
-        updatedTool = transferConfig;
-      }
-
-      else if (editedTool.type === "ghl_booking") {
-        // Validate required GHL fields
-        if (!editedTool.ghlApiKey || !editedTool.ghlCalendarId || !editedTool.ghlLocationId) {
-          setError("All GHL fields (API Key, Calendar ID, Location ID) are required");
-          return;
-        }
-
-        backendConfig = {
-          name: "GHL_BOOKING",
-          type: "webhook",
-          description: "Create a booking in GHL calendar",
-          expects_response: true,
-          api_schema: {
-            url: `${import.meta.env.VITE_BACKEND_URL}/ghl/book/`,
-            method: 'POST',
-            request_body_schema: {
-              type: 'object',
-              properties: {
-                apiKey: {
-                  type: "string",
-                  constant_value: editedTool.ghlApiKey
-                }, 
-                calendarId: {
-                  type: "string",
-                  constant_value: editedTool.ghlCalendarId
-                }, 
-                locationId: {
-                  type: "string",
-                  constant_value: editedTool.ghlLocationId
-                },
-                startTime: {
-                  type: 'string',
-                  description: 'Event start time in ISO 8601 format with timezone offset (e.g. 2021-06-23T03:30:00+05:30)'
-                },
-                endTime: {
-                  type: 'string',
-                  description: 'Event end time in ISO 8601 format with timezone offset (e.g. 2021-06-23T04:30:00+05:30)'
-                },
-                title: {
-                  type: 'string',
-                  description: 'Title or name of the event/appointment to be created in GHL calendar'
-                },
-                timezone: {
-                  type: "string",
-                  description: "Timezone of the event in IANA timezone format (e.g. America/New_York, Europe/London)"
-                },
-                contactInfo: {
-                  type: 'object',
-                  properties: {
-                    phone: {
-                      type: 'string',
-                      description: 'Contact phone number with country code'
-                    },
-                    firstName: {
-                      type: 'string',
-                      description: 'First name of the contact'
-                    },
-                    lastName: {
-                      type: 'string',
-                      description: 'Last name of the contact'
-                    },
-                    email: {
-                      type: 'string',
-                      description: 'Email address of the contact'
-                    }
-                  },
-                  required: ['phone'],
-                  description: 'Contact information for GHL'
-                }
-              },
-              required: ['startTime', 'endTime', 'title', 'timezone', 'contactInfo']
-            }
-          }
-        };
-        updatedTool = backendConfig;
-      } else if (editedTool.type === "calcom") {
-        // Validate required Cal.com fields
-        if (!editedTool.calApiKey) {
-          setError("Cal.com API Key is required");
-          return;
-        }
-
-        backendConfig = {
-          name: "CAL_BOOKING",
-          type: "webhook",
-          description: "Create a booking in Cal.com calendar",
-          api_schema: {
-            url: `${import.meta.env.VITE_BACKEND_URL}/calcom/book/`,
-            method: 'POST',
-            request_body_schema: {
-              type: 'object',
-              properties: {
-                apiKey: {
-                  type: "string",
-                  constant_value: editedTool.calApiKey
-                },
-                start: {
-                  type: 'string',
-                  description: 'Event start time in ISO 8601 format with UTC timezone (e.g. 2024-08-13T09:00:00Z)'
-                },
-                end: {
-                  type: 'string',
-                  description: 'Event end time in ISO 8601 format with UTC timezone (e.g. 2024-08-13T10:00:00Z)'
-                },
-                attendee: {
-                  type: 'object',
-                  properties: {
-                    name: {
-                      type: 'string',
-                      description: 'Full name of the attendee'
-                    },
-                    email: {
-                      type: 'string',
-                      description: 'Valid email address of the attendee'
-                    },
-                    timeZone: {
-                      type: 'string',
-                      description: 'IANA timezone identifier (e.g. America/New_York, Europe/London)'
-                    }
-                  },
-                  required: ['name', 'email', 'timeZone'],
-                  description: 'Attendee information for the booking'
-                }
-              },
-              required: ['start', 'end', 'attendee']
-            }
-          }
-        };
-        updatedTool = backendConfig;
-      } else {
-        backendConfig = { name: editedTool.name, type: "webhook", api_schema: {} };
-        updatedTool = {
-          ...editedTool,
-          ...backendConfig,
-        }
-      }
-      onSave(updatedTool);
-      onClose();
-    } catch (err) {
-      setError("Failed to save changes");
+    // Validate required fields based on tool type
+    if (editedTool.type === "ghl_booking" && (!editedTool.ghlApiKey || !editedTool.ghlCalendarId || !editedTool.ghlLocationId)) {
+      return;
     }
+    if (editedTool.type === "calcom" && !editedTool.calApiKey) {
+      return;
+    }
+
+    let updatedToolIds = [...toolIds];
+    let updatedBuiltInTools = { ...builtInTools };
+
+    if (editedTool.type === "end_call" || editedTool.type === "transfer_call") {
+      // Handle built-in tools
+      const toolKey = editedTool.name.toLowerCase();
+      const builtInTool: BuiltInTool = {
+        name: editedTool.name,
+        description: editedTool.description || "",
+        response_timeout_secs: editedTool.response_timeout_secs || 20,
+        type: "system",
+        params: {
+          system_tool_type: editedTool.name.toLowerCase()
+        }
+      };
+      updatedBuiltInTools[toolKey] = builtInTool;
+    } else {
+      // Handle webhook tools - add to tool_ids
+      const toolId = editedTool.name;
+      if (!updatedToolIds.includes(toolId)) {
+        updatedToolIds.push(toolId);
+      }
+    }
+
+    onSave(updatedToolIds, updatedBuiltInTools);
+    onClose();
   };
 
   const handleJsonChange = (value: string) => {
