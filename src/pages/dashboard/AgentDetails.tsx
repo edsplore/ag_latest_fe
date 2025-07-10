@@ -2166,13 +2166,13 @@ const AgentDetails = () => {
                               </div>
                               <div>
                                 <h4 className="text-sm font-medium text-gray-900 dark:text-white">
-                                  {builtInTool.name}
+                                  {builtInTool?.name}
                                   <span className="ml-2 text-xs bg-green-100 dark:bg-green-500/20 text-green-800 dark:text-green-300 px-2 py-0.5 rounded-full">
                                     System
                                   </span>
                                 </h4>
                                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                                  {builtInTool.description || `Built-in ${builtInTool.name} tool`}
+                                  {builtInTool?.description || `Built-in ${builtInTool?.name} tool`}
                                 </p>
                               </div>
                             </div>
