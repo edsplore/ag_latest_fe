@@ -5,7 +5,6 @@ import { cn } from "../lib/utils";
 import { useAuth } from "../contexts/AuthContext";
 
 interface Tool {
-  tool_id?: string;
   type: string;
   name: string;
   description: string;
@@ -58,10 +57,7 @@ interface ToolConfigModalProps {
   onClose: () => void;
   tool: Tool;
   agentId?: string;
-  userID?: string;
   onSave: (updatedTool: Tool) => void;
-  onUpdate?: (updatedTool: Tool) => void;
-  isCreating?: boolean;
 }
 
 const validateToolName = (name: string, type: string): string | null => {
@@ -71,13 +67,7 @@ const validateToolName = (name: string, type: string): string | null => {
   if (name.includes(" ")) {
     return "Tool name cannot contain spaces";
   }
-  if (
-    type === "webhook" &&
-    (name.toLowerCase() === "GHL_BOOKING".toLowerCase() ||
-      name.toLowerCase() === "CAL_BOOKING".toLowerCase() ||
-      name.toLowerCase() === "END_CALL".toLowerCase() ||
-      name.toLowerCase() === "TRANSFER_CALL".toLowerCase())
-  ) {
+  if (type === "webhook" && (name.toLowerCase() === "GHL_BOOKING".toLowerCase() || name.toLowerCase() === "CAL_BOOKING".toLowerCase() || name.toLowerCase() === "END_CALL".toLowerCase() || name.toLowerCase() === "TRANSFER_CALL".toLowerCase())) {
     return "Reserved tool name. Please choose a different name.";
   }
   if (type === "system" && name !== "END_CALL" && name !== "TRANSFER_CALL") {
@@ -105,40 +95,26 @@ export const ToolConfigModal = ({
   onClose,
   tool,
   onSave,
-  onUpdate,
   existingTools,
-  agentId,
-  userID,
-  isCreating,
+  agentId
 }: ToolConfigModalProps & { existingTools?: Tool[] }) => {
-  const toolTypeOptions = getAllToolTypeOptions().filter((option) => {
-    if (option.value === "webhook") return "webhook";
+
+  const toolTypeOptions = getAllToolTypeOptions().filter(option => {
+    if(option.value === 'webhook') return "webhook";
     // For GHL booking, show if it's the current tool being edited
-    if (option.value === "ghl_booking") {
-      return (
-        !existingTools?.some((t) => t.name === "GHL_BOOKING") ||
-        tool.name === "GHL_BOOKING"
-      );
+    if (option.value === 'ghl_booking') {
+      return !existingTools?.some(t => t.name === 'GHL_BOOKING') || tool.name === 'GHL_BOOKING';
     }
     // For Cal.com, show if it's the current tool being edited
-    if (option.value === "calcom") {
-      return (
-        !existingTools?.some((t) => t.name === "CAL_BOOKING") ||
-        tool.name === "CAL_BOOKING"
-      );
+    if (option.value === 'calcom') {
+      return !existingTools?.some(t => t.name === 'CAL_BOOKING') || tool.name === 'CAL_BOOKING';
     }
     // For end_call and transfer_call, show if it's the current tool being edited
-    if (option.value === "end_call") {
-      return (
-        !existingTools?.some((t) => t.name === "END_CALL") ||
-        tool.name === "END_CALL"
-      );
+    if (option.value === 'end_call') {
+      return !existingTools?.some(t => t.name === 'END_CALL') || tool.name === 'END_CALL';
     }
-    if (option.value === "transfer_call") {
-      return (
-        !existingTools?.some((t) => t.name === "TRANSFER_CALL") ||
-        tool.name === "TRANSFER_CALL"
-      );
+    if (option.value === 'transfer_call') {
+      return !existingTools?.some(t => t.name === 'TRANSFER_CALL') || tool.name === 'TRANSFER_CALL';
     }
     return true;
   });
@@ -151,36 +127,28 @@ export const ToolConfigModal = ({
     } else {
       toolCopy.type = getDisplayType(toolCopy.name);
     }
-
+    
     // Map saved GHL values from the backend schema if it's a GHL booking tool
-    if (
-      toolCopy.name === "GHL_BOOKING" &&
-      toolCopy.api_schema?.request_body_schema?.properties
-    ) {
+    if (toolCopy.name === "GHL_BOOKING" && toolCopy.api_schema?.request_body_schema?.properties) {
       const schema = toolCopy.api_schema.request_body_schema.properties;
-      toolCopy.ghlApiKey = schema.apiKey?.constant_value || "";
-      toolCopy.ghlCalendarId = schema.calendarId?.constant_value || "";
-      toolCopy.ghlLocationId = schema.locationId?.constant_value || "";
+      toolCopy.ghlApiKey = schema.apiKey?.constant_value || '';
+      toolCopy.ghlCalendarId = schema.calendarId?.constant_value || '';
+      toolCopy.ghlLocationId = schema.locationId?.constant_value || '';
     }
-
+    
     // Map saved Cal.com API key from the backend schema if it's a Cal.com booking tool
-    if (
-      toolCopy.name === "CAL_BOOKING" &&
-      toolCopy.api_schema?.request_body_schema?.properties
-    ) {
+    if (toolCopy.name === "CAL_BOOKING" && toolCopy.api_schema?.request_body_schema?.properties) {
       const schema = toolCopy.api_schema.request_body_schema.properties;
-      toolCopy.calApiKey = schema.apiKey?.constant_value || "";
+      toolCopy.calApiKey = schema.apiKey?.constant_value || '';
     }
-
+    
     return toolCopy;
   });
   const [error, setError] = useState("");
   const [nameError, setNameError] = useState<string | null>(null);
   const [jsonError, setJsonError] = useState("");
   const [showSampleModal, setShowSampleModal] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const { getEffectiveUser, user: originalUser } = useAuth();
-  const user = getEffectiveUser();
+  const { user } = useAuth();
 
   const handleClose = () => {
     setNameError(null);
@@ -189,28 +157,16 @@ export const ToolConfigModal = ({
     onClose();
   };
 
-  const handleSaveAndClose = async () => {
+  const handleSaveAndClose = () => {
     try {
-      setSaving(true);
-      setError("");
-
-      const nameValidationError = validateToolName(
-        editedTool.name,
-        editedTool.type,
-      );
+      const nameValidationError = validateToolName(editedTool.name, editedTool.type);
       if (nameValidationError && editedTool.type === "webhook") {
         setNameError(nameValidationError);
         return;
       }
 
       // Determine backend configuration based on tool name
-      let backendConfig: {
-        name: string;
-        type: string;
-        expects_response?: boolean;
-        api_schema?: any;
-        params?: any;
-      } = { name: "", type: "" };
+      let backendConfig: { name: string; type: string; expects_response?: boolean; api_schema?: any, params?: any } = { name: '', type: '' };
 
       let updatedTool: Tool;
 
@@ -220,37 +176,30 @@ export const ToolConfigModal = ({
           type: "system",
           description: "End the current call",
           params: {
-            system_tool_type: "end_call",
-          },
+            system_tool_type: "end_call"
+          }
         };
         updatedTool = endCallConfig;
       } else if (editedTool.type === "transfer_call") {
         const transferConfig = {
-          name: "TRANSFER_CALL",
+          name: "TRANSFER_CALL", 
           type: "system",
           description: "Transfer the current call to human",
           params: {
             system_tool_type: "transfer_to_number",
-            transfers: [
-              {
-                phone_number:
-                  editedTool.params?.transfers?.[0]?.phone_number || "",
-                condition: "transfer_to_number",
-              },
-            ],
-          },
+            transfers: [{
+              phone_number: editedTool.params?.transfers?.[0]?.phone_number || '',
+              condition: "transfer_to_number"
+            }]
+          }
         };
         updatedTool = transferConfig;
-      } else if (editedTool.type === "ghl_booking") {
+      }
+
+      else if (editedTool.type === "ghl_booking") {
         // Validate required GHL fields
-        if (
-          !editedTool.ghlApiKey ||
-          !editedTool.ghlCalendarId ||
-          !editedTool.ghlLocationId
-        ) {
-          setError(
-            "All GHL fields (API Key, Calendar ID, Location ID) are required",
-          );
+        if (!editedTool.ghlApiKey || !editedTool.ghlCalendarId || !editedTool.ghlLocationId) {
+          setError("All GHL fields (API Key, Calendar ID, Location ID) are required");
           return;
         }
 
@@ -261,75 +210,65 @@ export const ToolConfigModal = ({
           expects_response: true,
           api_schema: {
             url: `${import.meta.env.VITE_BACKEND_URL}/ghl/book/`,
-            method: "POST",
+            method: 'POST',
             request_body_schema: {
-              type: "object",
+              type: 'object',
               properties: {
                 apiKey: {
                   type: "string",
-                  constant_value: editedTool.ghlApiKey,
-                },
+                  constant_value: editedTool.ghlApiKey
+                }, 
                 calendarId: {
                   type: "string",
-                  constant_value: editedTool.ghlCalendarId,
-                },
+                  constant_value: editedTool.ghlCalendarId
+                }, 
                 locationId: {
                   type: "string",
-                  constant_value: editedTool.ghlLocationId,
+                  constant_value: editedTool.ghlLocationId
                 },
                 startTime: {
-                  type: "string",
-                  description:
-                    "Event start time in ISO 8601 format with timezone offset (e.g. 2021-06-23T03:30:00+05:30)",
+                  type: 'string',
+                  description: 'Event start time in ISO 8601 format with timezone offset (e.g. 2021-06-23T03:30:00+05:30)'
                 },
                 endTime: {
-                  type: "string",
-                  description:
-                    "Event end time in ISO 8601 format with timezone offset (e.g. 2021-06-23T04:30:00+05:30)",
+                  type: 'string',
+                  description: 'Event end time in ISO 8601 format with timezone offset (e.g. 2021-06-23T04:30:00+05:30)'
                 },
                 title: {
-                  type: "string",
-                  description:
-                    "Title or name of the event/appointment to be created in GHL calendar",
+                  type: 'string',
+                  description: 'Title or name of the event/appointment to be created in GHL calendar'
                 },
                 timezone: {
                   type: "string",
-                  description:
-                    "Timezone of the event in IANA timezone format (e.g. America/New_York, Europe/London)",
+                  description: "Timezone of the event in IANA timezone format (e.g. America/New_York, Europe/London)"
                 },
                 contactInfo: {
-                  type: "object",
+                  type: 'object',
                   properties: {
                     phone: {
-                      type: "string",
-                      description: "Contact phone number with country code",
+                      type: 'string',
+                      description: 'Contact phone number with country code'
                     },
                     firstName: {
-                      type: "string",
-                      description: "First name of the contact",
+                      type: 'string',
+                      description: 'First name of the contact'
                     },
                     lastName: {
-                      type: "string",
-                      description: "Last name of the contact",
+                      type: 'string',
+                      description: 'Last name of the contact'
                     },
                     email: {
-                      type: "string",
-                      description: "Email address of the contact",
-                    },
+                      type: 'string',
+                      description: 'Email address of the contact'
+                    }
                   },
-                  required: ["phone"],
-                  description: "Contact information for GHL",
-                },
+                  required: ['phone'],
+                  description: 'Contact information for GHL'
+                }
               },
-              required: [
-                "startTime",
-                "endTime",
-                "title",
-                "timezone",
-                "contactInfo",
-              ],
-            },
-          },
+              required: ['startTime', 'endTime', 'title', 'timezone', 'contactInfo']
+            }
+          }
         };
         updatedTool = backendConfig;
       } else if (editedTool.type === "calcom") {
@@ -345,123 +284,58 @@ export const ToolConfigModal = ({
           description: "Create a booking in Cal.com calendar",
           api_schema: {
             url: `${import.meta.env.VITE_BACKEND_URL}/calcom/book/`,
-            method: "POST",
+            method: 'POST',
             request_body_schema: {
-              type: "object",
+              type: 'object',
               properties: {
                 apiKey: {
                   type: "string",
-                  constant_value: editedTool.calApiKey,
+                  constant_value: editedTool.calApiKey
                 },
                 start: {
-                  type: "string",
-                  description:
-                    "Event start time in ISO 8601 format with UTC timezone (e.g. 2024-08-13T09:00:00Z)",
+                  type: 'string',
+                  description: 'Event start time in ISO 8601 format with UTC timezone (e.g. 2024-08-13T09:00:00Z)'
                 },
                 end: {
-                  type: "string",
-                  description:
-                    "Event end time in ISO 8601 format with UTC timezone (e.g. 2024-08-13T10:00:00Z)",
+                  type: 'string',
+                  description: 'Event end time in ISO 8601 format with UTC timezone (e.g. 2024-08-13T10:00:00Z)'
                 },
                 attendee: {
-                  type: "object",
+                  type: 'object',
                   properties: {
                     name: {
-                      type: "string",
-                      description: "Full name of the attendee",
+                      type: 'string',
+                      description: 'Full name of the attendee'
                     },
                     email: {
-                      type: "string",
-                      description: "Valid email address of the attendee",
+                      type: 'string',
+                      description: 'Valid email address of the attendee'
                     },
                     timeZone: {
-                      type: "string",
-                      description:
-                        "IANA timezone identifier (e.g. America/New_York, Europe/London)",
-                    },
+                      type: 'string',
+                      description: 'IANA timezone identifier (e.g. America/New_York, Europe/London)'
+                    }
                   },
-                  required: ["name", "email", "timeZone"],
-                  description: "Attendee information for the booking",
-                },
+                  required: ['name', 'email', 'timeZone'],
+                  description: 'Attendee information for the booking'
+                }
               },
-              required: ["start", "end", "attendee"],
-            },
-          },
+              required: ['start', 'end', 'attendee']
+            }
+          }
         };
         updatedTool = backendConfig;
       } else {
-        backendConfig = {
-          name: editedTool.name,
-          type: "webhook",
-          api_schema: {},
-        };
+        backendConfig = { name: editedTool.name, type: "webhook", api_schema: {} };
         updatedTool = {
           ...editedTool,
           ...backendConfig,
-        };
-      }
-
-      if (isCreating) {
-        console.log("Creating new tool:", updatedTool);
-        // Create new tool via API
-        const response = await fetch(
-          `${import.meta.env.VITE_BACKEND_URL}/tools/create`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              user_id: userID,
-              ...updatedTool,
-            }),
-          },
-        );
-
-        if (!response.ok) {
-          throw new Error("Failed to create tool");
-        }
-
-        const createdTool = await response.json();
-        updatedTool.tool_id = createdTool.id;
-        onSave(updatedTool);
-      } else {
-        // Update existing tool via API
-        if (!editedTool.tool_id) {
-          throw new Error("Tool ID is required for updates");
-        }
-
-        const response = await fetch(
-          `${import.meta.env.VITE_BACKEND_URL}/tools/${user.uid}/${editedTool.tool_id}`,
-          {
-            method: "PATCH",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(updatedTool),
-          },
-        );
-
-        if (!response.ok) {
-          throw new Error("Failed to update tool");
-        }
-
-        const responseData = await response.json();
-        updatedTool.tool_id = responseData.data.tool_id;
-
-        if (onUpdate) {
-          onUpdate(updatedTool);
-        } else {
-          onSave(updatedTool);
         }
       }
-
+      onSave(updatedTool);
       onClose();
     } catch (err) {
-      console.error("Error saving tool:", err);
-      setError(err instanceof Error ? err.message : "Failed to save changes");
-    } finally {
-      setSaving(false);
+      setError("Failed to save changes");
     }
   };
 
@@ -554,12 +428,7 @@ export const ToolConfigModal = ({
                         setEditedTool((prev) => ({
                           ...prev,
                           type: e.target.value,
-                          name:
-                            e.target.value === "end_call"
-                              ? "END_CALL"
-                              : e.target.value === "transfer_call"
-                                ? "TRANSFER_CALL"
-                                : prev.name,
+                          name: e.target.value === "end_call" ? "END_CALL" : e.target.value === "transfer_call" ? "TRANSFER_CALL" : prev.name,
                         }))
                       }
                       className="input font-lato font-semibold focus:border-primary dark:focus:border-primary-400"
@@ -572,72 +441,58 @@ export const ToolConfigModal = ({
                     </select>
                   </div>
 
-                  {editedTool.type !== "end_call" &&
-                    editedTool.type !== "transfer_call" && (
-                      <>
-                        <div>
-                          <label className="block text-sm font-lato font-semibold text-gray-900 dark:text-white mb-2">
-                            Tool Name
-                          </label>
-                          <div className="relative">
-                            <input
-                              type="text"
-                              value={
-                                editedTool.type === "ghl_booking"
-                                  ? "GHL_BOOKING"
-                                  : editedTool.type === "calcom"
-                                    ? "CAL_BOOKING"
-                                    : editedTool.name
+                  {editedTool.type !== "end_call" && editedTool.type !== "transfer_call" && (
+                    <>
+                      <div>
+                        <label className="block text-sm font-lato font-semibold text-gray-900 dark:text-white mb-2">
+                          Tool Name
+                        </label>
+                        <div className="relative">
+                          <input
+                            type="text"
+                            value={editedTool.type === "ghl_booking" ? "GHL_BOOKING" : editedTool.type === "calcom" ? "CAL_BOOKING" : editedTool.name}
+                            onChange={(e) => {
+                              if (editedTool.type === "webhook") {
+                                const newName = e.target.value;
+                                setEditedTool((prev) => ({ ...prev, name: newName }));
+                                setNameError(validateToolName(newName, editedTool.type));
                               }
-                              onChange={(e) => {
-                                if (editedTool.type === "webhook") {
-                                  const newName = e.target.value;
-                                  setEditedTool((prev) => ({
-                                    ...prev,
-                                    name: newName,
-                                  }));
-                                  setNameError(
-                                    validateToolName(newName, editedTool.type),
-                                  );
-                                }
-                              }}
-                              readOnly={editedTool.type !== "webhook"}
-                              className={cn(
-                                "input font-lato font-semibold focus:border-primary dark:focus:border-primary-400",
-                                nameError &&
-                                  "border-red-500 dark:border-red-500",
-                                editedTool.type !== "webhook" &&
-                                  "bg-gray-100 dark:bg-dark-100 cursor-not-allowed",
-                              )}
-                              placeholder="Enter tool name"
-                            />
-                            {nameError && editedTool.type === "webhook" && (
-                              <p className="mt-2 text-sm text-red-600 dark:text-red-400">
-                                {nameError}
-                              </p>
+                            }}
+                            readOnly={editedTool.type !== "webhook"}
+                            className={cn(
+                              "input font-lato font-semibold focus:border-primary dark:focus:border-primary-400",
+                              nameError && "border-red-500 dark:border-red-500",
+                              editedTool.type !== "webhook" && "bg-gray-100 dark:bg-dark-100 cursor-not-allowed"
                             )}
-                          </div>
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-lato font-semibold text-gray-900 dark:text-white mb-2">
-                            Description
-                          </label>
-                          <textarea
-                            value={editedTool.description}
-                            onChange={(e) =>
-                              setEditedTool((prev) => ({
-                                ...prev,
-                                description: e.target.value,
-                              }))
-                            }
-                            className="input font-lato font-semibold focus:border-primary dark:focus:border-primary-400"
-                            rows={3}
-                            placeholder="Describe what this tool does and how it should be used"
+                            placeholder="Enter tool name"
                           />
+                          {nameError && editedTool.type === "webhook" && (
+                            <p className="mt-2 text-sm text-red-600 dark:text-red-400">
+                              {nameError}
+                            </p>
+                          )}
                         </div>
-                      </>
-                    )}
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-lato font-semibold text-gray-900 dark:text-white mb-2">
+                          Description
+                        </label>
+                        <textarea
+                          value={editedTool.description}
+                          onChange={(e) =>
+                            setEditedTool((prev) => ({
+                              ...prev,
+                              description: e.target.value,
+                            }))
+                          }
+                          className="input font-lato font-semibold focus:border-primary dark:focus:border-primary-400"
+                          rows={3}
+                          placeholder="Describe what this tool does and how it should be used"
+                        />
+                      </div>
+                    </>
+                  )}
 
                   {/* Conditionally render based on tool type */}
                   {editedTool.type === "webhook" && (
@@ -683,7 +538,7 @@ export const ToolConfigModal = ({
                             placeholder="Enter your GHL API key"
                           />
                         </div>
-
+                        
                         <div>
                           <label className="block text-sm font-lato font-semibold text-gray-900 dark:text-white mb-2">
                             Calendar ID <span className="text-red-500">*</span>
@@ -701,7 +556,7 @@ export const ToolConfigModal = ({
                             placeholder="Enter GHL calendar ID"
                           />
                         </div>
-
+                        
                         <div>
                           <label className="block text-sm font-lato font-semibold text-gray-900 dark:text-white mb-2">
                             Location ID <span className="text-red-500">*</span>
@@ -747,8 +602,7 @@ export const ToolConfigModal = ({
                     <div className="space-y-4">
                       <div>
                         <label className="block text-sm font-lato font-semibold text-gray-900 dark:text-white mb-2">
-                          Cal.com API Key{" "}
-                          <span className="text-red-500">*</span>
+                          Cal.com API Key <span className="text-red-500">*</span>
                         </label>
                         <input
                           type="text"
@@ -763,7 +617,7 @@ export const ToolConfigModal = ({
                           placeholder="Enter your Cal.com API key"
                         />
                       </div>
-
+                      
                       <div className="p-4 bg-gray-50 dark:bg-dark-100 rounded-lg">
                         <h3 className="text-sm font-lato font-semibold text-gray-900 dark:text-white mb-3">
                           Required Parameters Example
@@ -789,21 +643,17 @@ export const ToolConfigModal = ({
                       </label>
                       <input
                         type="text"
-                        value={
-                          editedTool.params?.transfers?.[0]?.phone_number || ""
-                        }
+                        value={editedTool.params?.transfers?.[0]?.phone_number || ''}
                         onChange={(e) =>
                           setEditedTool((prev) => ({
                             ...prev,
                             params: {
                               system_tool_type: "transfer_to_number",
-                              transfers: [
-                                {
-                                  phone_number: e.target.value,
-                                  condition: "transfer_to_number",
-                                },
-                              ],
-                            },
+                              transfers: [{
+                                phone_number: e.target.value,
+                                condition: "transfer_to_number"
+                              }]
+                            }
                           }))
                         }
                         className="input font-lato font-semibold focus:border-primary dark:focus:border-primary-400"
@@ -870,31 +720,22 @@ export const ToolConfigModal = ({
                   <button
                     onClick={handleSaveAndClose}
                     disabled={
-                      saving ||
-                      !!nameError ||
-                      !!jsonError ||
-                      (editedTool.type === "ghl_booking" &&
-                        (!editedTool.ghlApiKey ||
-                          !editedTool.ghlCalendarId ||
-                          !editedTool.ghlLocationId)) ||
+                      !!nameError || 
+                      !!jsonError || 
+                      (editedTool.type === "ghl_booking" && (!editedTool.ghlApiKey || !editedTool.ghlCalendarId || !editedTool.ghlLocationId)) ||
                       (editedTool.type === "calcom" && !editedTool.calApiKey)
                     }
                     className={cn(
                       "px-4 py-2 text-sm font-lato font-semibold text-white bg-primary rounded-lg",
                       "hover:bg-primary-600 transition-colors",
-                      (saving ||
-                        !!nameError ||
-                        !!jsonError ||
-                        (editedTool.type === "ghl_booking" &&
-                          (!editedTool.ghlApiKey ||
-                            !editedTool.ghlCalendarId ||
-                            !editedTool.ghlLocationId)) ||
-                        (editedTool.type === "calcom" &&
-                          !editedTool.calApiKey)) &&
+                      (!!nameError || 
+                       !!jsonError || 
+                       (editedTool.type === "ghl_booking" && (!editedTool.ghlApiKey || !editedTool.ghlCalendarId || !editedTool.ghlLocationId)) ||
+                       (editedTool.type === "calcom" && !editedTool.calApiKey)) &&
                         "opacity-50 cursor-not-allowed",
                     )}
                   >
-                    {saving ? "Saving..." : "Done"}
+                    Done
                   </button>
                 </div>
               </div>
