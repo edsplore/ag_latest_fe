@@ -1237,9 +1237,37 @@ export const ToolConfigModal = ({
                           <div className="text-sm text-gray-600 dark:text-gray-400 mb-2">
                             <strong>Request Body Schema:</strong>
                           </div>
-                          <pre className="text-sm font-mono bg-white dark:bg-dark-200 p-4 rounded-lg border border-gray-200 dark:border-dark-100 overflow-x-auto">
-                            {JSON.stringify(selectedToolDetails.api_schema?.request_body_schema, null, 2)}
-                          </pre>
+                          <textarea
+                            value={JSON.stringify(selectedToolDetails.api_schema?.request_body_schema, null, 2)}
+                            onChange={(e) => {
+                              try {
+                                const parsed = JSON.parse(e.target.value);
+                                setJsonError("");
+                                setSelectedToolDetails(prev => {
+                                  if (!prev) return prev;
+                                  return {
+                                    ...prev,
+                                    api_schema: {
+                                      ...prev.api_schema,
+                                      request_body_schema: parsed
+                                    }
+                                  };
+                                });
+                              } catch (err) {
+                                setJsonError("Invalid JSON format");
+                              }
+                            }}
+                            className={cn(
+                              "input font-mono text-sm h-[400px] focus:border-primary dark:focus:border-primary-400",
+                              jsonError && "border-red-500 dark:border-red-500"
+                            )}
+                            placeholder="Enter JSON schema..."
+                          />
+                          {jsonError && (
+                            <p className="mt-2 text-sm text-red-600 dark:text-red-400">
+                              {jsonError}
+                            </p>
+                          )}
                         </div>
                       )}
                     </div>
