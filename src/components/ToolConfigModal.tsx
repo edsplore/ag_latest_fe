@@ -351,8 +351,8 @@ export const ToolConfigModal = ({
         const createdTool = await response.json();
         const updatedToolIds = [...toolIds, createdTool.id];
         onSave(updatedToolIds, builtInTools);
-      } else if (toolType === "ghl_booking") {
-        // Create GHL booking tool
+      } else if (toolType === "ghl_booking" && !editingTool) {
+        // Create new GHL booking tool
         if (!ghlConfig.ghlApiKey || !ghlConfig.ghlCalendarId || !ghlConfig.ghlLocationId) {
           setError("All GHL fields (API Key, Calendar ID, Location ID) are required");
           return;
@@ -450,6 +450,11 @@ export const ToolConfigModal = ({
           
           // Update GHL configuration if it's a GHL tool
           if (selectedToolDetails.name === 'GHL_BOOKING' && selectedToolDetails.api_schema?.request_body_schema?.properties) {
+            if (!ghlConfig.ghlApiKey || !ghlConfig.ghlCalendarId || !ghlConfig.ghlLocationId) {
+              setError("All GHL fields (API Key, Calendar ID, Location ID) are required");
+              return;
+            }
+            
             updatedToolDetails.api_schema.request_body_schema.properties = {
               ...selectedToolDetails.api_schema.request_body_schema.properties,
               apiKey: {
