@@ -285,7 +285,8 @@ export const ToolConfigModal = ({
                     <select
                       value={toolType}
                       onChange={(e) => handleToolTypeChange(e.target.value)}
-                      className="input font-lato font-semibold focus:border-primary dark:focus:border-primary-400"
+                      disabled={!!editingTool}
+                      className="input font-lato font-semibold focus:border-primary dark:focus:border-primary-400 disabled:bg-gray-100 dark:disabled:bg-dark-100 disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       {getToolTypeOptions().map((option) => (
                         <option key={option.value} value={option.value}>
