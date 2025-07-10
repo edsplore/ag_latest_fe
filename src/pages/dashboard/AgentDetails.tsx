@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -44,7 +43,7 @@ import {
 } from "../../lib/constants";
 
 interface DynamicVariable {
-  type: string;  // "boolean" | "string" | "number" | "integer"
+  type: string; // "boolean" | "string" | "number" | "integer"
   description?: string;
   dynamic_variable?: string;
   constant_value?: string; // "string" | "integer" | "double" | "boolean"
@@ -83,10 +82,10 @@ interface AgentDetails {
         request_headers: {
           "Content-Type": string;
         };
-      }
+      };
     };
     privacy?: PrivacySettings;
-  }
+  };
   conversation_config: {
     agent: {
       prompt: {
@@ -180,7 +179,7 @@ interface EditForm {
         request_headers: {
           "Content-Type": string;
         };
-      }
+      };
     };
     privacy?: PrivacySettings;
   };
@@ -190,6 +189,7 @@ interface EditForm {
     type: string;
   }>;
   tool_ids: string[];
+  built_in_tools: string[];
   tts?: {
     optimize_streaming_latency?: number;
     stability?: number;
@@ -243,8 +243,12 @@ const AgentDetails = () => {
   const [showLanguageDropdown, setShowLanguageDropdown] = useState(false);
   const [selectedTool, setSelectedTool] = useState<Tool | null>(null);
   const [isCreatingTool, setIsCreatingTool] = useState(false);
-  const [showAdvancedVoiceSettings, setShowAdvancedVoiceSettings] = useState(false);
-  const [showAdvancedConversationSettings, setShowAdvancedConversationSettings] = useState(false);
+  const [showAdvancedVoiceSettings, setShowAdvancedVoiceSettings] =
+    useState(false);
+  const [
+    showAdvancedConversationSettings,
+    setShowAdvancedConversationSettings,
+  ] = useState(false);
   const [showPrivacySettings, setShowPrivacySettings] = useState(false);
   const [showLLMUsageModal, setShowLLMUsageModal] = useState(false);
 
@@ -265,20 +269,21 @@ const AgentDetails = () => {
       url: "",
       model_id: "",
       api_key: {
-        secret_id: ""
-      }
+        secret_id: "",
+      },
     },
     knowledge_base: [],
     tool_ids: [],
+    built_in_tools: [],
     platform_settings: {
       data_collection: {},
       workspace_overrides: {
         conversation_initiation_client_data_webhook: {
-          url: '',
+          url: "",
           request_headers: {
-            "Content-Type": "application/json"
-          }
-        }
+            "Content-Type": "application/json",
+          },
+        },
       },
       privacy: {
         record_voice: true,
@@ -286,33 +291,36 @@ const AgentDetails = () => {
         delete_transcript_and_pii: false,
         delete_audio: false,
         apply_to_existing_conversations: false,
-        zero_retention_mode: false
-      }
+        zero_retention_mode: false,
+      },
     },
     tts: {
       optimize_streaming_latency: 0,
       stability: 0.5,
       speed: 1.0,
-      similarity_boost: 0.8
+      similarity_boost: 0.8,
     },
     turn: {
       turn_timeout: 7,
       silence_end_call_timeout: -1,
-      mode: "silence"
+      mode: "silence",
     },
     asr: {
-      keywords: []
-    }
+      keywords: [],
+    },
   });
   const [editedForm, setEditedForm] = useState<EditForm>(editForm);
 
-  const [conversationInitiationMode, setConversationInitiationMode] = useState(editForm.first_message === "" ? "user" : "bot");
+  const [conversationInitiationMode, setConversationInitiationMode] = useState(
+    editForm.first_message === "" ? "user" : "bot",
+  );
   const [asrKeywordsInput, setAsrKeywordsInput] = useState("");
   const [secretName, setSecretName] = useState("");
   const [secretValue, setSecretValue] = useState("");
   const [generatingSecret, setGeneratingSecret] = useState(false);
   const [updatingSecret, setUpdatingSecret] = useState(false);
-  const [dynamicVariablePlaceholders, setDynamicVariablePlaceholders] = useState<{[key: string]: string}>({});
+  const [dynamicVariablePlaceholders, setDynamicVariablePlaceholders] =
+    useState<{ [key: string]: string }>({});
   const [llmUsageData, setLlmUsageData] = useState<any>(null);
   const [loadingLLMUsage, setLoadingLLMUsage] = useState(false);
   const [llmUsageError, setLlmUsageError] = useState("");
@@ -328,11 +336,14 @@ const AgentDetails = () => {
 
     try {
       const toolPromises = toolIds.map(async (toolId) => {
-        const response = await fetch(`${BACKEND_URL}/tools/${user.uid}/${toolId}`, {
-          headers: {
-            Authorization: `Bearer ${await originalUser.getIdToken()}`,
+        const response = await fetch(
+          `${BACKEND_URL}/tools/${user.uid}/${toolId}`,
+          {
+            headers: {
+              Authorization: `Bearer ${await originalUser.getIdToken()}`,
+            },
           },
-        });
+        );
         if (response.ok) {
           return await response.json();
         }
@@ -340,7 +351,7 @@ const AgentDetails = () => {
       });
 
       const tools = await Promise.all(toolPromises);
-      const validTools = tools.filter(tool => tool !== null);
+      const validTools = tools.filter((tool) => tool !== null);
       setToolsForDisplay(validTools);
     } catch (err) {
       console.error("Error fetching tools for display:", err);
@@ -350,6 +361,7 @@ const AgentDetails = () => {
 
   // Fetch agent details
   const fetchAgentDetails = async () => {
+    console.log("Fetching agent details...");
     if (!user || !agentId) return;
 
     try {
@@ -360,7 +372,7 @@ const AgentDetails = () => {
         `${BACKEND_URL}/agents/${user.uid}/${agentId}`,
         {
           headers: {
-            Authorization: `Bearer ${await originalUser.getIdToken()}`,
+            Authorization: `Bearer ${await originalUser?.getIdToken()}`,
           },
         },
       );
@@ -385,8 +397,8 @@ const AgentDetails = () => {
           url: "",
           model_id: "",
           api_key: {
-            secret_id: ""
-          }
+            secret_id: "",
+          },
         },
         knowledge_base:
           agentData.conversation_config.agent.prompt.knowledge_base || [],
@@ -394,12 +406,14 @@ const AgentDetails = () => {
         platform_settings: {
           data_collection: agentData.platform_settings?.data_collection || {},
           workspace_overrides: {
-            conversation_initiation_client_data_webhook: agentData.platform_settings?.workspace_overrides?.conversation_initiation_client_data_webhook || {
-              url: '',
+            conversation_initiation_client_data_webhook: agentData
+              .platform_settings?.workspace_overrides
+              ?.conversation_initiation_client_data_webhook || {
+              url: "",
               request_headers: {
-                "Content-Type": "application/json"
-              }
-            }
+                "Content-Type": "application/json",
+              },
+            },
           },
           privacy: agentData.platform_settings?.privacy || {
             record_voice: true,
@@ -407,44 +421,56 @@ const AgentDetails = () => {
             delete_transcript_and_pii: false,
             delete_audio: false,
             apply_to_existing_conversations: false,
-            zero_retention_mode: false
-          }
+            zero_retention_mode: false,
+          },
         },
         tts: {
-          optimize_streaming_latency: agentData.conversation_config.tts.optimize_streaming_latency || 0,
+          optimize_streaming_latency:
+            agentData.conversation_config.tts.optimize_streaming_latency || 0,
           stability: agentData.conversation_config.tts.stability || 0.5,
           speed: agentData.conversation_config.tts.speed || 1.0,
-          similarity_boost: agentData.conversation_config.tts.similarity_boost || 0.8
+          similarity_boost:
+            agentData.conversation_config.tts.similarity_boost || 0.8,
         },
         turn: {
           turn_timeout: agentData.conversation_config.turn.turn_timeout || 7,
-          silence_end_call_timeout: agentData.conversation_config.turn.silence_end_call_timeout || -1,
-          mode: agentData.conversation_config.turn.mode || "silence"
+          silence_end_call_timeout:
+            agentData.conversation_config.turn.silence_end_call_timeout || -1,
+          mode: agentData.conversation_config.turn.mode || "silence",
         },
-        asr: agentData.conversation_config.asr ? { ...agentData.conversation_config.asr } : { keywords: [] }
+        asr: agentData.conversation_config.asr
+          ? { ...agentData.conversation_config.asr }
+          : { keywords: [] },
       };
       setEditForm(initialForm);
       setEditedForm(initialForm);
-      setConversationInitiationMode(initialForm.first_message === "" ? "user" : "bot");
+      setConversationInitiationMode(
+        initialForm.first_message === "" ? "user" : "bot",
+      );
       setAsrKeywordsInput(initialForm.asr?.keywords?.join(", ") || "");
 
       // Fetch tools for display
       await fetchToolsForDisplay(initialForm.tool_ids);
 
       // Initialize dynamic variable placeholders
-      const dynamicVars = extractAllDynamicVariables(initialForm.first_message, initialForm.prompt);
-      const placeholders: {[key: string]: string} = {};
+      const dynamicVars = extractAllDynamicVariables(
+        initialForm.first_message,
+        initialForm.prompt,
+      );
+      const placeholders: { [key: string]: string } = {};
 
       // First, populate with existing saved values from backend
-      const savedPlaceholders = agentData.conversation_config.agent.dynamic_variables?.dynamic_variable_placeholders || {};
-      Object.keys(savedPlaceholders).forEach(key => {
-        placeholders[key] = savedPlaceholders[key] || '';
+      const savedPlaceholders =
+        agentData.conversation_config.agent.dynamic_variables
+          ?.dynamic_variable_placeholders || {};
+      Object.keys(savedPlaceholders).forEach((key) => {
+        placeholders[key] = savedPlaceholders[key] || "";
       });
 
       // Then, ensure all variables found in first message and prompt have entries (with empty string if not saved)
-      dynamicVars.forEach(varName => {
+      dynamicVars.forEach((varName) => {
         if (placeholders[varName] === undefined) {
-          placeholders[varName] = '';
+          placeholders[varName] = "";
         }
       });
 
@@ -508,6 +534,7 @@ const AgentDetails = () => {
   };
 
   useEffect(() => {
+    console.log("useEffect triggered for agentId:", agentId)
     fetchAgentDetails();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, agentId]);
@@ -517,16 +544,26 @@ const AgentDetails = () => {
     const dataCollection = editedForm.platform_settings?.data_collection || {};
     for (const [varName, varConfig] of Object.entries(dataCollection)) {
       if (varConfig.description !== undefined) {
-        if (!varConfig.description || varConfig.description.trim() === '') {
+        if (!varConfig.description || varConfig.description.trim() === "") {
           throw new Error(`Description is required for variable "${varName}"`);
         }
       } else if (varConfig.constant_value !== undefined) {
-        if (!varConfig.constant_value || varConfig.constant_value.trim() === '') {
-          throw new Error(`Constant value is required for variable "${varName}"`);
+        if (
+          !varConfig.constant_value ||
+          varConfig.constant_value.trim() === ""
+        ) {
+          throw new Error(
+            `Constant value is required for variable "${varName}"`,
+          );
         }
       } else if (varConfig.dynamic_variable !== undefined) {
-        if (!varConfig.dynamic_variable || varConfig.dynamic_variable.trim() === '') {
-          throw new Error(`Dynamic variable is required for variable "${varName}"`);
+        if (
+          !varConfig.dynamic_variable ||
+          varConfig.dynamic_variable.trim() === ""
+        ) {
+          throw new Error(
+            `Dynamic variable is required for variable "${varName}"`,
+          );
         }
       }
     }
@@ -558,66 +595,88 @@ const AgentDetails = () => {
                   prompt: editedForm.prompt,
                   llm: editedForm.llm,
                   temperature: editedForm.temperature,
-                  ...(editedForm.llm === "custom-llm" && editedForm.custom_llm ? {
-                    custom_llm: editedForm.custom_llm
-                  } : {}),
+                  ...(editedForm.llm === "custom-llm" && editedForm.custom_llm
+                    ? {
+                        custom_llm: editedForm.custom_llm,
+                      }
+                    : {}),
                   knowledge_base: editedForm.knowledge_base,
                   tool_ids: editedForm.tool_ids,
+                  built_in_tools: editedForm.built_in_tools || [],
                 },
-                first_message: conversationInitiationMode === "user" ? "" : editedForm.first_message,
+                first_message:
+                  conversationInitiationMode === "user"
+                    ? ""
+                    : editedForm.first_message,
                 language: editedForm.language,
                 ...(() => {
-                  const firstMessage = conversationInitiationMode === "user" ? "" : editedForm.first_message;
-                  const dynamicVarsAll = extractAllDynamicVariables(firstMessage, editedForm.prompt);
+                  const firstMessage =
+                    conversationInitiationMode === "user"
+                      ? ""
+                      : editedForm.first_message;
+                  const dynamicVarsAll = extractAllDynamicVariables(
+                    firstMessage,
+                    editedForm.prompt,
+                  );
 
-                  if (dynamicVarsAll.length > 0 && Object.keys(dynamicVariablePlaceholders).length > 0) {
+                  if (
+                    dynamicVarsAll.length > 0 &&
+                    Object.keys(dynamicVariablePlaceholders).length > 0
+                  ) {
                     return {
                       dynamic_variables: {
-                        dynamic_variable_placeholders: dynamicVariablePlaceholders
-                      }
+                        dynamic_variable_placeholders:
+                          dynamicVariablePlaceholders,
+                      },
                     };
                   }
                   return {
                     dynamic_variables: {
-                      dynamic_variable_placeholders: {}
-                    }
-                  }
-                })()
+                      dynamic_variable_placeholders: {},
+                    },
+                  };
+                })(),
               },
               tts: {
                 voice_id: editedForm.voice_id,
                 model_id: getModelId(editedForm.modelType, editedForm.language),
-                optimize_streaming_latency: editedForm.tts?.optimize_streaming_latency || 0,
+                optimize_streaming_latency:
+                  editedForm.tts?.optimize_streaming_latency || 0,
                 stability: editedForm.tts?.stability || 0.5,
                 speed: editedForm.tts?.speed || 1.0,
                 similarity_boost: editedForm.tts?.similarity_boost || 0.8,
               },
               turn: {
                 turn_timeout: editedForm.turn?.turn_timeout || 7,
-                silence_end_call_timeout: editedForm.turn?.silence_end_call_timeout || -1,
+                silence_end_call_timeout:
+                  editedForm.turn?.silence_end_call_timeout || -1,
                 mode: editedForm.turn?.mode || "silence",
               },
               asr: {
-                keywords: editedForm.asr?.keywords || []
-              }
+                keywords: editedForm.asr?.keywords || [],
+              },
             },
             platform_settings: {
               data_collection: Object.fromEntries(
-                Object.entries(editedForm.platform_settings?.data_collection || {}).map(([key, value]) => {
+                Object.entries(
+                  editedForm.platform_settings?.data_collection || {},
+                ).map(([key, value]) => {
                   const { constant_value_type, ...rest } = value;
                   return [key, rest];
-                })
+                }),
               ),
               workspace_overrides: (() => {
-                const webhookUrl = editedForm.platform_settings?.workspace_overrides?.conversation_initiation_client_data_webhook?.url;
+                const webhookUrl =
+                  editedForm.platform_settings?.workspace_overrides
+                    ?.conversation_initiation_client_data_webhook?.url;
                 if (webhookUrl && webhookUrl.trim()) {
                   return {
                     conversation_initiation_client_data_webhook: {
                       url: webhookUrl,
                       request_headers: {
-                        "Content-Type": "application/json"
-                      }
-                    }
+                        "Content-Type": "application/json",
+                      },
+                    },
                   };
                 }
                 return {};
@@ -628,8 +687,8 @@ const AgentDetails = () => {
                 delete_transcript_and_pii: false,
                 delete_audio: false,
                 apply_to_existing_conversations: false,
-                zero_retention_mode: false
-              }
+                zero_retention_mode: false,
+              },
             },
           }),
         },
@@ -678,7 +737,10 @@ const AgentDetails = () => {
   };
 
   // Extract dynamic variables from both first message and prompt
-  const extractAllDynamicVariables = (firstMessage: string, prompt: string): string[] => {
+  const extractAllDynamicVariables = (
+    firstMessage: string,
+    prompt: string,
+  ): string[] => {
     const firstMessageVars = extractDynamicVariables(firstMessage);
     const promptVars = extractDynamicVariables(prompt);
     return [...new Set([...firstMessageVars, ...promptVars])]; // Combine and remove duplicates
@@ -693,21 +755,25 @@ const AgentDetails = () => {
     setHasChanges(true);
 
     // If updating first_message or prompt, extract dynamic variables from both
-    if ((field === 'first_message' || field === 'prompt') && typeof value === 'string') {
-      const firstMessage = field === 'first_message' ? value : editedForm.first_message;
-      const prompt = field === 'prompt' ? value : editedForm.prompt;
+    if (
+      (field === "first_message" || field === "prompt") &&
+      typeof value === "string"
+    ) {
+      const firstMessage =
+        field === "first_message" ? value : editedForm.first_message;
+      const prompt = field === "prompt" ? value : editedForm.prompt;
       const dynamicVars = extractAllDynamicVariables(firstMessage, prompt);
       const newPlaceholders = { ...dynamicVariablePlaceholders };
 
       // Add new variables
-      dynamicVars.forEach(varName => {
+      dynamicVars.forEach((varName) => {
         if (!newPlaceholders[varName]) {
-          newPlaceholders[varName] = '';
+          newPlaceholders[varName] = "";
         }
       });
 
       // Remove variables that are no longer in first message or prompt
-      Object.keys(newPlaceholders).forEach(varName => {
+      Object.keys(newPlaceholders).forEach((varName) => {
         if (!dynamicVars.includes(varName)) {
           delete newPlaceholders[varName];
         }
@@ -719,6 +785,7 @@ const AgentDetails = () => {
 
   // Create a new tool
   const handleCreateTool = () => {
+    console.log("handleCreateTool called");
     const newTool = {
       tool_id: "", // Will be set by backend
       type: "webhook",
@@ -749,8 +816,12 @@ const AgentDetails = () => {
       // Update toolsForDisplay - safely check for tool_id existence
       setToolsForDisplay((prev) =>
         prev.map((tool) =>
-          tool.tool_id && updatedTool.tool_id && tool.tool_id === updatedTool.tool_id ? updatedTool : tool
-        )
+          tool.tool_id &&
+          updatedTool.tool_id &&
+          tool.tool_id === updatedTool.tool_id
+            ? updatedTool
+            : tool,
+        ),
       );
     }
     setSelectedTool(null);
@@ -761,8 +832,12 @@ const AgentDetails = () => {
     // Update toolsForDisplay - safely check for tool_id existence
     setToolsForDisplay((prev) =>
       prev.map((tool) =>
-        tool.tool_id && updatedTool.tool_id && tool.tool_id === updatedTool.tool_id ? updatedTool : tool
-      )
+        tool.tool_id &&
+        updatedTool.tool_id &&
+        tool.tool_id === updatedTool.tool_id
+          ? updatedTool
+          : tool,
+      ),
     );
     setHasChanges(true);
   };
@@ -805,17 +880,20 @@ const AgentDetails = () => {
       handleChange("custom_llm", {
         ...editedForm.custom_llm,
         api_key: {
-          secret_id: data.secret_id
-        }
+          secret_id: data.secret_id,
+        },
       });
 
       // Clear the input fields since secret is now generated
       setSecretName("");
       setSecretValue("");
-
     } catch (err) {
       console.error("Error generating secret:", err);
-      setError(err instanceof Error ? err.message : "Failed to generate secret. Please try again.");
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Failed to generate secret. Please try again.",
+      );
     } finally {
       setGeneratingSecret(false);
     }
@@ -838,23 +916,32 @@ const AgentDetails = () => {
 
   // Update existing secret via API call
   const handleUpdateSecret = async () => {
-    if (!user || !secretName.trim() || !secretValue.trim() || !editedForm.custom_llm?.api_key?.secret_id) return;
+    if (
+      !user ||
+      !secretName.trim() ||
+      !secretValue.trim() ||
+      !editedForm.custom_llm?.api_key?.secret_id
+    )
+      return;
 
     try {
       setGeneratingSecret(true);
       setError("");
 
-      const response = await fetch(`${BACKEND_URL}/secrets/${editedForm.custom_llm.api_key.secret_id}`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${await originalUser?.getIdToken()}`,
+      const response = await fetch(
+        `${BACKEND_URL}/secrets/${editedForm.custom_llm.api_key.secret_id}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${await originalUser?.getIdToken()}`,
+          },
+          body: JSON.stringify({
+            name: secretName.trim(),
+            value: secretValue.trim(),
+          }),
         },
-        body: JSON.stringify({
-          name: secretName.trim(),
-          value: secretValue.trim(),
-        }),
-      });
+      );
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -867,25 +954,31 @@ const AgentDetails = () => {
       handleChange("custom_llm", {
         ...editedForm.custom_llm,
         api_key: {
-          secret_id: data.secret_id
-        }
+          secret_id: data.secret_id,
+        },
       });
 
       // Clear the input fields and exit update mode
       setSecretName("");
       setSecretValue("");
       setUpdatingSecret(false);
-
     } catch (err) {
       console.error("Error updating secret:", err);
-      setError(err instanceof Error ? err.message : "Failed to update secret. Please try again.");
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Failed to update secret. Please try again.",
+      );
     } finally {
       setGeneratingSecret(false);
     }
   };
 
   // Calculate LLM Usage
-  const calculateLLMUsage = async (userPromptLength?: number, userNumberOfPages?: number) => {
+  const calculateLLMUsage = async (
+    userPromptLength?: number,
+    userNumberOfPages?: number,
+  ) => {
     if (!user) return;
 
     try {
@@ -894,7 +987,8 @@ const AgentDetails = () => {
 
       // Use user input or default values
       const promptLength = userPromptLength ?? editedForm.prompt.length;
-      const numberOfPages = userNumberOfPages ?? (editedForm.knowledge_base.length * 10);
+      const numberOfPages =
+        userNumberOfPages ?? editedForm.knowledge_base.length * 10;
 
       const response = await fetch(`${BACKEND_URL}/llm-usage/calculate`, {
         method: "POST",
@@ -904,7 +998,7 @@ const AgentDetails = () => {
         body: JSON.stringify({
           prompt_length: promptLength,
           number_of_pages: numberOfPages,
-          rag_enabled: false // Always false as requested
+          rag_enabled: false, // Always false as requested
         }),
       });
 
@@ -914,10 +1008,13 @@ const AgentDetails = () => {
 
       const data: LLMUsageResponse = await response.json();
       setLlmUsageData(data);
-
     } catch (err) {
       console.error("Error calculating LLM usage:", err);
-      setLlmUsageError(err instanceof Error ? err.message : "Failed to calculate LLM usage. Please try again.");
+      setLlmUsageError(
+        err instanceof Error
+          ? err.message
+          : "Failed to calculate LLM usage. Please try again.",
+      );
     } finally {
       setLoadingLLMUsage(false);
     }
@@ -1150,7 +1247,7 @@ const AgentDetails = () => {
                         onChange={(e) =>
                           handleChange("custom_llm", {
                             ...editedForm.custom_llm,
-                            url: e.target.value
+                            url: e.target.value,
                           })
                         }
                         className="input"
@@ -1173,7 +1270,7 @@ const AgentDetails = () => {
                         onChange={(e) =>
                           handleChange("custom_llm", {
                             ...editedForm.custom_llm,
-                            model_id: e.target.value
+                            model_id: e.target.value,
                           })
                         }
                         className="input"
@@ -1191,7 +1288,8 @@ const AgentDetails = () => {
                       </label>
 
                       {/* Show input fields only when no secret ID exists or when updating */}
-                      {(!editedForm.custom_llm?.api_key?.secret_id || updatingSecret) && (
+                      {(!editedForm.custom_llm?.api_key?.secret_id ||
+                        updatingSecret) && (
                         <>
                           {/* Secret Name Field */}
                           <div className="space-y-2">
@@ -1243,7 +1341,11 @@ const AgentDetails = () => {
                         <button
                           type="button"
                           onClick={handleGenerateSecret}
-                          disabled={!secretName.trim() || !secretValue.trim() || generatingSecret}
+                          disabled={
+                            !secretName.trim() ||
+                            !secretValue.trim() ||
+                            generatingSecret
+                          }
                           className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                         >
                           {generatingSecret ? (
@@ -1272,7 +1374,11 @@ const AgentDetails = () => {
                           <button
                             type="button"
                             onClick={handleUpdateSecret}
-                            disabled={!secretName.trim() || !secretValue.trim() || generatingSecret}
+                            disabled={
+                              !secretName.trim() ||
+                              !secretValue.trim() ||
+                              generatingSecret
+                            }
                             className="flex-1 flex items-center justify-center space-x-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                           >
                             {generatingSecret ? (
@@ -1301,7 +1407,8 @@ const AgentDetails = () => {
                       )}
 
                       <p className="text-sm text-gray-500 dark:text-gray-400">
-                        Create a secret in Workspace to securely store your API key
+                        Create a secret in Workspace to securely store your API
+                        key
                       </p>
                     </div>
                   </div>
@@ -1351,7 +1458,9 @@ const AgentDetails = () => {
               {/* Advanced Voice Settings */}
               <div className="space-y-4 mt-8">
                 <button
-                  onClick={() => setShowAdvancedVoiceSettings(!showAdvancedVoiceSettings)}
+                  onClick={() =>
+                    setShowAdvancedVoiceSettings(!showAdvancedVoiceSettings)
+                  }
                   className="flex items-center justify-between w-full p-4 bg-gray-50 dark:bg-dark-100 rounded-lg hover:bg-gray-100 dark:hover:bg-dark-50 transition-colors"
                 >
                   <div className="flex items-center space-x-2">
@@ -1374,7 +1483,8 @@ const AgentDetails = () => {
                       <div className="flex items-center space-x-2">
                         <Zap className="w-4 h-4 text-primary dark:text-primary-400" />
                         <h4 className="text-sm font-medium text-gray-900 dark:text-white">
-                          Optimize Streaming Latency ({editedForm.tts?.optimize_streaming_latency || 0})
+                          Optimize Streaming Latency (
+                          {editedForm.tts?.optimize_streaming_latency || 0})
                         </h4>
                       </div>
                       <input
@@ -1386,7 +1496,9 @@ const AgentDetails = () => {
                         onChange={(e) =>
                           handleChange("tts", {
                             ...editedForm.tts,
-                            optimize_streaming_latency: parseInt(e.target.value)
+                            optimize_streaming_latency: parseInt(
+                              e.target.value,
+                            ),
                           })
                         }
                         className="w-full"
@@ -1401,7 +1513,8 @@ const AgentDetails = () => {
                       <div className="flex items-center space-x-2">
                         <CheckCircle2 className="w-4 h-4 text-primary dark:text-primary-400" />
                         <h4 className="text-sm font-medium text-gray-900 dark:text-white">
-                          Stability ({editedForm.tts?.stability?.toFixed(2) || '0.50'})
+                          Stability (
+                          {editedForm.tts?.stability?.toFixed(2) || "0.50"})
                         </h4>
                       </div>
                       <input
@@ -1413,7 +1526,7 @@ const AgentDetails = () => {
                         onChange={(e) =>
                           handleChange("tts", {
                             ...editedForm.tts,
-                            stability: parseFloat(e.target.value)
+                            stability: parseFloat(e.target.value),
                           })
                         }
                         className="w-full"
@@ -1428,7 +1541,7 @@ const AgentDetails = () => {
                       <div className="flex items-center space-x-2">
                         <ArrowRight className="w-4 h-4 text-primary dark:text-primary-400" />
                         <h4 className="text-sm font-medium text-gray-900 dark:text-white">
-                          Speed ({editedForm.tts?.speed?.toFixed(2) || '1.00'})
+                          Speed ({editedForm.tts?.speed?.toFixed(2) || "1.00"})
                         </h4>
                       </div>
                       <input
@@ -1440,7 +1553,7 @@ const AgentDetails = () => {
                         onChange={(e) =>
                           handleChange("tts", {
                             ...editedForm.tts,
-                            speed: parseFloat(e.target.value)
+                            speed: parseFloat(e.target.value),
                           })
                         }
                         className="w-full"
@@ -1455,7 +1568,10 @@ const AgentDetails = () => {
                       <div className="flex items-center space-x-2">
                         <Sparkles className="w-4 h-4 text-primary dark:text-primary-400" />
                         <h4 className="text-sm font-medium text-gray-900 dark:text-white">
-                          Similarity Boost ({editedForm.tts?.similarity_boost?.toFixed(2) || '0.80'})
+                          Similarity Boost (
+                          {editedForm.tts?.similarity_boost?.toFixed(2) ||
+                            "0.80"}
+                          )
                         </h4>
                       </div>
                       <input
@@ -1467,7 +1583,7 @@ const AgentDetails = () => {
                         onChange={(e) =>
                           handleChange("tts", {
                             ...editedForm.tts,
-                            similarity_boost: parseFloat(e.target.value)
+                            similarity_boost: parseFloat(e.target.value),
                           })
                         }
                         className="w-full"
@@ -1483,7 +1599,11 @@ const AgentDetails = () => {
               {/* Advanced Conversation Settings */}
               <div className="space-y-4 mt-8">
                 <button
-                  onClick={() => setShowAdvancedConversationSettings(!showAdvancedConversationSettings)}
+                  onClick={() =>
+                    setShowAdvancedConversationSettings(
+                      !showAdvancedConversationSettings,
+                    )
+                  }
                   className="flex items-center justify-between w-full p-4 bg-gray-50 dark:bg-dark-100 rounded-lg hover:bg-gray-100 dark:hover:bg-dark-50 transition-colors"
                 >
                   <div className="flex items-center space-x-2">
@@ -1506,7 +1626,8 @@ const AgentDetails = () => {
                       <div className="flex items-center space-x-2">
                         <AlertCircle className="w-4 h-4 text-primary dark:text-primary-400" />
                         <h4 className="text-sm font-medium text-gray-900 dark:text-white">
-                          Turn Timeout ({editedForm.turn?.turn_timeout?.toFixed(1) || '7.0'}s)
+                          Turn Timeout (
+                          {editedForm.turn?.turn_timeout?.toFixed(1) || "7.0"}s)
                         </h4>
                       </div>
                       <input
@@ -1518,13 +1639,14 @@ const AgentDetails = () => {
                         onChange={(e) =>
                           handleChange("turn", {
                             ...editedForm.turn,
-                            turn_timeout: parseFloat(e.target.value)
+                            turn_timeout: parseFloat(e.target.value),
                           })
                         }
                         className="w-full"
                       />
                       <p className="text-sm text-gray-500 dark:text-gray-400">
-                        Maximum wait time for user's reply before re-engaging (1-30 seconds)
+                        Maximum wait time for user's reply before re-engaging
+                        (1-30 seconds)
                       </p>
                     </div>
 
@@ -1533,7 +1655,11 @@ const AgentDetails = () => {
                       <div className="flex items-center space-x-2">
                         <Phone className="w-4 h-4 text-primary dark:text-primary-400" />
                         <h4 className="text-sm font-medium text-gray-900 dark:text-white">
-                          Silence End Call Timeout ({editedForm.turn?.silence_end_call_timeout === -1 ? 'Disabled' : `${editedForm.turn?.silence_end_call_timeout?.toFixed(1) || '60.0'}s`})
+                          Silence End Call Timeout (
+                          {editedForm.turn?.silence_end_call_timeout === -1
+                            ? "Disabled"
+                            : `${editedForm.turn?.silence_end_call_timeout?.toFixed(1) || "60.0"}s`}
+                          )
                         </h4>
                       </div>
                       <input
@@ -1545,13 +1671,16 @@ const AgentDetails = () => {
                         onChange={(e) =>
                           handleChange("turn", {
                             ...editedForm.turn,
-                            silence_end_call_timeout: parseFloat(e.target.value)
+                            silence_end_call_timeout: parseFloat(
+                              e.target.value,
+                            ),
                           })
                         }
                         className="w-full"
                       />
                       <p className="text-sm text-gray-500 dark:text-gray-400">
-                        Maximum silence before ending call (-1 to disable, 0-300 seconds)
+                        Maximum silence before ending call (-1 to disable, 0-300
+                        seconds)
                       </p>
                     </div>
 
@@ -1573,12 +1702,14 @@ const AgentDetails = () => {
                             onChange={(e) =>
                               handleChange("turn", {
                                 ...editedForm.turn,
-                                mode: e.target.value
+                                mode: e.target.value,
                               })
                             }
                             className="radio-switch"
                           />
-                          <span className="text-sm text-gray-700 dark:text-gray-300">Silence</span>
+                          <span className="text-sm text-gray-700 dark:text-gray-300">
+                            Silence
+                          </span>
                         </label>
                         <label className="flex items-center space-x-2 cursor-pointer">
                           <input
@@ -1589,16 +1720,19 @@ const AgentDetails = () => {
                             onChange={(e) =>
                               handleChange("turn", {
                                 ...editedForm.turn,
-                                mode: e.target.value
+                                mode: e.target.value,
                               })
                             }
                             className="radio-switch"
                           />
-                          <span className="text-sm text-gray-700 dark:text-gray-300">Turn</span>
+                          <span className="text-sm text-gray-700 dark:text-gray-300">
+                            Turn
+                          </span>
                         </label>
                       </div>
                       <p className="text-sm text-gray-500 dark:text-gray-400">
-                        Choose how the agent detects when the user has finished speaking
+                        Choose how the agent detects when the user has finished
+                        speaking
                       </p>
                     </div>
                   </div>
@@ -1649,7 +1783,7 @@ const AgentDetails = () => {
                       handleChange("asr", { ...editedForm.asr, keywords });
                     }}
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
+                      if (e.key === "Enter") {
                         e.preventDefault();
                         // Process keywords when user presses Enter
                         const keywords = e.currentTarget.value
@@ -1700,19 +1834,24 @@ const AgentDetails = () => {
                         <label className="relative inline-flex items-center cursor-pointer">
                           <input
                             type="checkbox"
-                            checked={editedForm.platform_settings?.privacy?.record_voice ?? true}
+                            checked={
+                              editedForm.platform_settings?.privacy
+                                ?.record_voice ?? true
+                            }
                             onChange={(e) => {
                               handleChange("platform_settings", {
                                 ...editedForm.platform_settings,
                                 privacy: {
                                   ...editedForm.platform_settings?.privacy,
-                                  record_voice: e.target.checked
-                                }
+                                  record_voice: e.target.checked,
+                                },
                               });
                             }}
                             className="sr-only peer"
                           />
-                          <div className={`w-11 h-6 rounded-full peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/25 dark:peer-focus:ring-primary/50 peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 ${editedForm.platform_settings?.privacy?.record_voice ? 'bg-primary' : 'bg-gray-200 dark:bg-gray-700'}`}></div>
+                          <div
+                            className={`w-11 h-6 rounded-full peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/25 dark:peer-focus:ring-primary/50 peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 ${editedForm.platform_settings?.privacy?.record_voice ? "bg-primary" : "bg-gray-200 dark:bg-gray-700"}`}
+                          ></div>
                         </label>
                       </div>
                     </div>
@@ -1721,7 +1860,12 @@ const AgentDetails = () => {
                     <div className="space-y-4">
                       <div className="flex items-center space-x-2">
                         <h4 className="text-sm font-medium text-gray-900 dark:text-white">
-                          Retention Days ({editedForm.platform_settings?.privacy?.retention_days === -1 ? 'No limit' : `${editedForm.platform_settings?.privacy?.retention_days || 0} days`})
+                          Retention Days (
+                          {editedForm.platform_settings?.privacy
+                            ?.retention_days === -1
+                            ? "No limit"
+                            : `${editedForm.platform_settings?.privacy?.retention_days || 0} days`}
+                          )
                         </h4>
                       </div>
                       <input
@@ -1729,20 +1873,24 @@ const AgentDetails = () => {
                         min="-1"
                         max="365"
                         step="1"
-                        value={editedForm.platform_settings?.privacy?.retention_days ?? -1}
+                        value={
+                          editedForm.platform_settings?.privacy
+                            ?.retention_days ?? -1
+                        }
                         onChange={(e) => {
                           handleChange("platform_settings", {
                             ...editedForm.platform_settings,
                             privacy: {
                               ...editedForm.platform_settings?.privacy,
-                              retention_days: parseInt(e.target.value)
-                            }
+                              retention_days: parseInt(e.target.value),
+                            },
                           });
                         }}
                         className="w-full"
                       />
                       <p className="text-sm text-gray-500 dark:text-gray-400">
-                        The number of days to retain the conversation. -1 indicates no retention limit
+                        The number of days to retain the conversation. -1
+                        indicates no retention limit
                       </p>
                     </div>
 
@@ -1760,19 +1908,24 @@ const AgentDetails = () => {
                         <label className="relative inline-flex items-center cursor-pointer">
                           <input
                             type="checkbox"
-                            checked={editedForm.platform_settings?.privacy?.delete_transcript_and_pii ?? false}
+                            checked={
+                              editedForm.platform_settings?.privacy
+                                ?.delete_transcript_and_pii ?? false
+                            }
                             onChange={(e) => {
                               handleChange("platform_settings", {
                                 ...editedForm.platform_settings,
                                 privacy: {
                                   ...editedForm.platform_settings?.privacy,
-                                  delete_transcript_and_pii: e.target.checked
-                                }
+                                  delete_transcript_and_pii: e.target.checked,
+                                },
                               });
                             }}
                             className="sr-only peer"
                           />
-                          <div className={`w-11 h-6 rounded-full peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/25 dark:peer-focus:ring-primary/50 peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 ${editedForm.platform_settings?.privacy?.delete_transcript_and_pii ? 'bg-primary' : 'bg-gray-200 dark:bg-gray-700'}`}></div>
+                          <div
+                            className={`w-11 h-6 rounded-full peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/25 dark:peer-focus:ring-primary/50 peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 ${editedForm.platform_settings?.privacy?.delete_transcript_and_pii ? "bg-primary" : "bg-gray-200 dark:bg-gray-700"}`}
+                          ></div>
                         </label>
                       </div>
                     </div>
@@ -1791,19 +1944,24 @@ const AgentDetails = () => {
                         <label className="relative inline-flex items-center cursor-pointer">
                           <input
                             type="checkbox"
-                            checked={editedForm.platform_settings?.privacy?.delete_audio ?? false}
+                            checked={
+                              editedForm.platform_settings?.privacy
+                                ?.delete_audio ?? false
+                            }
                             onChange={(e) => {
                               handleChange("platform_settings", {
                                 ...editedForm.platform_settings,
                                 privacy: {
                                   ...editedForm.platform_settings?.privacy,
-                                  delete_audio: e.target.checked
-                                }
+                                  delete_audio: e.target.checked,
+                                },
                               });
                             }}
                             className="sr-only peer"
                           />
-                          <div className={`w-11 h-6 rounded-full peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/25 dark:peer-focus:ring-primary/50 peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 ${editedForm.platform_settings?.privacy?.delete_audio ? 'bg-primary' : 'bg-gray-200 dark:bg-gray-700'}`}></div>
+                          <div
+                            className={`w-11 h-6 rounded-full peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/25 dark:peer-focus:ring-primary/50 peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 ${editedForm.platform_settings?.privacy?.delete_audio ? "bg-primary" : "bg-gray-200 dark:bg-gray-700"}`}
+                          ></div>
                         </label>
                       </div>
                     </div>
@@ -1816,25 +1974,32 @@ const AgentDetails = () => {
                             Apply to Existing Conversations
                           </h4>
                           <p className="text-sm text-gray-500 dark:text-gray-400">
-                            Whether to apply the privacy settings to existing conversations
+                            Whether to apply the privacy settings to existing
+                            conversations
                           </p>
                         </div>
                         <label className="relative inline-flex items-center cursor-pointer">
                           <input
                             type="checkbox"
-                            checked={editedForm.platform_settings?.privacy?.apply_to_existing_conversations ?? false}
+                            checked={
+                              editedForm.platform_settings?.privacy
+                                ?.apply_to_existing_conversations ?? false
+                            }
                             onChange={(e) => {
                               handleChange("platform_settings", {
                                 ...editedForm.platform_settings,
                                 privacy: {
                                   ...editedForm.platform_settings?.privacy,
-                                  apply_to_existing_conversations: e.target.checked
-                                }
+                                  apply_to_existing_conversations:
+                                    e.target.checked,
+                                },
                               });
                             }}
                             className="sr-only peer"
                           />
-                          <div className={`w-11 h-6 rounded-full peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/25 dark:peer-focus:ring-primary/50 peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 ${editedForm.platform_settings?.privacy?.apply_to_existing_conversations ? 'bg-primary' : 'bg-gray-200 dark:bg-gray-700'}`}></div>
+                          <div
+                            className={`w-11 h-6 rounded-full peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/25 dark:peer-focus:ring-primary/50 peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 ${editedForm.platform_settings?.privacy?.apply_to_existing_conversations ? "bg-primary" : "bg-gray-200 dark:bg-gray-700"}`}
+                          ></div>
                         </label>
                       </div>
                     </div>
@@ -1847,25 +2012,31 @@ const AgentDetails = () => {
                             Zero Retention Mode
                           </h4>
                           <p className="text-sm text-gray-500 dark:text-gray-400">
-                            Whether to enable zero retention mode - no PII data is stored
+                            Whether to enable zero retention mode - no PII data
+                            is stored
                           </p>
                         </div>
                         <label className="relative inline-flex items-center cursor-pointer">
                           <input
                             type="checkbox"
-                            checked={editedForm.platform_settings?.privacy?.zero_retention_mode ?? false}
+                            checked={
+                              editedForm.platform_settings?.privacy
+                                ?.zero_retention_mode ?? false
+                            }
                             onChange={(e) => {
                               handleChange("platform_settings", {
                                 ...editedForm.platform_settings,
                                 privacy: {
                                   ...editedForm.platform_settings?.privacy,
-                                  zero_retention_mode: e.target.checked
-                                }
+                                  zero_retention_mode: e.target.checked,
+                                },
                               });
                             }}
                             className="sr-only peer"
                           />
-                          <div className={`w-11 h-6 rounded-full peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/25 dark:peer-focus:ring-primary/50 peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 ${editedForm.platform_settings?.privacy?.zero_retention_mode ? 'bg-primary' : 'bg-gray-200 dark:bg-gray-700'}`}></div>
+                          <div
+                            className={`w-11 h-6 rounded-full peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/25 dark:peer-focus:ring-primary/50 peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 ${editedForm.platform_settings?.privacy?.zero_retention_mode ? "bg-primary" : "bg-gray-200 dark:bg-gray-700"}`}
+                          ></div>
                         </label>
                       </div>
                     </div>
@@ -1894,12 +2065,17 @@ const AgentDetails = () => {
                         onChange={() => {
                           setConversationInitiationMode("bot");
                           if (editedForm.first_message === "") {
-                            handleChange("first_message", "Hello! How can I help you today?");
+                            handleChange(
+                              "first_message",
+                              "Hello! How can I help you today?",
+                            );
                           }
                         }}
                         className="radio-switch"
                       />
-                      <span className="text-sm text-gray-700 dark:text-gray-300">Bot starts conversation</span>
+                      <span className="text-sm text-gray-700 dark:text-gray-300">
+                        Bot starts conversation
+                      </span>
                     </label>
                     <label className="flex items-center space-x-2 cursor-pointer">
                       <input
@@ -1913,12 +2089,15 @@ const AgentDetails = () => {
                         }}
                         className="radio-switch"
                       />
-                      <span className="text-sm text-gray-700 dark:text-gray-300">User starts conversation</span>
+                      <span className="text-sm text-gray-700 dark:text-gray-300">
+                        User starts conversation
+                      </span>
                     </label>
                   </div>
 
                   <p className="text-sm text-gray-500 dark:text-gray-400">
-                    Choose whether the bot should greet the user first or wait for the user to speak.
+                    Choose whether the bot should greet the user first or wait
+                    for the user to speak.
                   </p>
                 </div>
 
@@ -1926,7 +2105,8 @@ const AgentDetails = () => {
                 {conversationInitiationMode === "bot" && (
                   <div className="space-y-3 pl-4 border-l-2 border-primary/20 dark:border-primary/30">
                     <p className="text-sm text-gray-500 dark:text-gray-400">
-                      Choose a predefined opening message or create a custom one for your agent.
+                      Choose a predefined opening message or create a custom one
+                      for your agent.
                     </p>
                     <h4 className="text-sm font-medium text-gray-900 dark:text-white">
                       Bot's Opening Message
@@ -1941,46 +2121,75 @@ const AgentDetails = () => {
                           "Good day! I'm here to help. What do you need?",
                           "Welcome! How may I be of service?",
                           "Hello! Thank you for calling. How can I assist you today?",
-                          "Hi! I'm ready to help. What questions do you have?"
+                          "Hi! I'm ready to help. What questions do you have?",
                         ];
-                        return predefinedMessages.includes(editedForm.first_message)
+                        return predefinedMessages.includes(
+                          editedForm.first_message,
+                        )
                           ? editedForm.first_message
                           : "custom";
                       })()}
                       onChange={(e) => {
                         if (e.target.value === "custom") {
                           // Keep current message if it's already custom
-                          if (!["Hello! How can I help you today?", "Hi there! What can I assist you with?", "Good day! I'm here to help. What do you need?", "Welcome! How may I be of service?", "Hello! Thank you for calling. How can I assist you today?", "Hi! I'm ready to help. What questions do you have?"].includes(editedForm.first_message)) {
+                          if (
+                            ![
+                              "Hello! How can I help you today?",
+                              "Hi there! What can I assist you with?",
+                              "Good day! I'm here to help. What do you need?",
+                              "Welcome! How may I be of service?",
+                              "Hello! Thank you for calling. How can I assist you today?",
+                              "Hi! I'm ready to help. What questions do you have?",
+                            ].includes(editedForm.first_message)
+                          ) {
                             return;
                           }
-                          handleChange("first_message", "Enter your custom message...");
+                          handleChange(
+                            "first_message",
+                            "Enter your custom message...",
+                          );
                         } else {
                           handleChange("first_message", e.target.value);
                         }
                       }}
                       className="input"
                     >
-                      <option value="Hello! How can I help you today?">Hello! How can I help you today?</option>
-                      <option value="Hi there! What can I assist you with?">Hi there! What can I assist you with?</option>
-                      <option value="Good day! I'm here to help. What do you need?">Good day! I'm here to help. What do you need?</option>
-                      <option value="Welcome! How may I be of service?">Welcome! How may I be of service?</option>
-                      <option value="Hello! Thank you for calling. How can I assist you today?">Hello! Thank you for calling. How can I assist you today?</option>
-                      <option value="Hi! I'm ready to help. What questions do you have?">Hi! I'm ready to help. What questions do you have?</option>
+                      <option value="Hello! How can I help you today?">
+                        Hello! How can I help you today?
+                      </option>
+                      <option value="Hi there! What can I assist you with?">
+                        Hi there! What can I assist you with?
+                      </option>
+                      <option value="Good day! I'm here to help. What do you need?">
+                        Good day! I'm here to help. What do you need?
+                      </option>
+                      <option value="Welcome! How may I be of service?">
+                        Welcome! How may I be of service?
+                      </option>
+                      <option value="Hello! Thank you for calling. How can I assist you today?">
+                        Hello! Thank you for calling. How can I assist you
+                        today?
+                      </option>
+                      <option value="Hi! I'm ready to help. What questions do you have?">
+                        Hi! I'm ready to help. What questions do you have?
+                      </option>
                       <option value="custom">Custom message...</option>
                     </select>
 
                     {/* Custom Input Field - shows when custom is selected or when message doesn't match predefined ones */}
-                    {((() => {
+                    {(() => {
                       const predefinedMessages = [
                         "Hello! How can I help you today?",
                         "Hi there! What can I assist you with?",
                         "Good day! I'm here to help. What do you need?",
                         "Welcome! How may I be of service?",
                         "Hello! Thank you for calling. How can I assist you today?",
-                        "Hi! I'm ready to help. What questions do you have?"
+                        "Hi! I'm ready to help. What questions do you have?",
                       ];
-                      return !predefinedMessages.includes(editedForm.first_message);
-                    })()) && (
+                      return !predefinedMessages.includes(
+                        editedForm.first_message,
+                      );
+                    })() && (
                       <textarea
                         value={editedForm.first_message}
                         onChange={(e) => {
@@ -1988,7 +2197,10 @@ const AgentDetails = () => {
                           // Prevent switching to user starts if field is being cleared
                           // Set a placeholder message to maintain bot starts mode
                           if (value.trim() === "") {
-                            handleChange("first_message", "Enter your custom message...");
+                            handleChange(
+                              "first_message",
+                              "Enter your custom message...",
+                            );
                           } else {
                             handleChange("first_message", value);
                           }
@@ -1998,15 +2210,23 @@ const AgentDetails = () => {
                         placeholder="Enter your custom first message..."
                         onFocus={(e) => {
                           // Clear placeholder text when user focuses
-                          if (e.target.value === "Enter your custom message...") {
+                          if (
+                            e.target.value === "Enter your custom message..."
+                          ) {
                             // Set to empty but don't trigger handleChange to avoid switching modes
-                            setEditedForm(prev => ({ ...prev, first_message: "" }));
+                            setEditedForm((prev) => ({
+                              ...prev,
+                              first_message: "",
+                            }));
                           }
                         }}
                         onBlur={(e) => {
                           // If user leaves field empty, restore placeholder
                           if (e.target.value.trim() === "") {
-                            handleChange("first_message", "Enter your custom message...");
+                            handleChange(
+                              "first_message",
+                              "Enter your custom message...",
+                            );
                           }
                         }}
                       />
@@ -2026,20 +2246,25 @@ const AgentDetails = () => {
                   </div>
                   <div className="space-y-3 pl-4 border-l-2 border-primary/20 dark:border-primary/30">
                     <p className="text-sm text-gray-500 dark:text-gray-400">
-                      Define values for the dynamic variables found in your first message and prompt. These will be used as defaults during conversations.
+                      Define values for the dynamic variables found in your
+                      first message and prompt. These will be used as defaults
+                      during conversations.
                     </p>
                     {Object.keys(dynamicVariablePlaceholders).map((varName) => (
                       <div key={varName} className="space-y-2">
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                          {varName} <span className="text-gray-500 dark:text-gray-400 font-normal">(from {`{{${varName}}}`})</span>
+                          {varName}{" "}
+                          <span className="text-gray-500 dark:text-gray-400 font-normal">
+                            (from {`{{${varName}}}`})
+                          </span>
                         </label>
                         <input
                           type="text"
                           value={dynamicVariablePlaceholders[varName]}
                           onChange={(e) => {
-                            setDynamicVariablePlaceholders(prev => ({
+                            setDynamicVariablePlaceholders((prev) => ({
                               ...prev,
-                              [varName]: e.target.value
+                              [varName]: e.target.value,
                             }));
                             setHasChanges(true);
                           }}
@@ -2068,7 +2293,9 @@ const AgentDetails = () => {
                   placeholder="Enter the agent's behavior and instructions..."
                 />
                 <p className="text-sm text-gray-500 dark:text-gray-400">
-                  You can use dynamic variables like {`{{variable_name}}`} in your prompt. These will be replaced with actual values during conversations.
+                  You can use dynamic variables like {`{{variable_name}}`} in
+                  your prompt. These will be replaced with actual values during
+                  conversations.
                 </p>
               </div>
 
@@ -2087,16 +2314,16 @@ const AgentDetails = () => {
                         name: `variable_${Object.keys(editedForm.platform_settings?.data_collection || {}).length + 1}`,
                         config: {
                           type: "string",
-                          description: ""
-                        }
+                          description: "",
+                        },
                       };
                       const updatedCollection = {
                         ...editedForm.platform_settings?.data_collection,
-                        [newVar.name]: newVar.config
+                        [newVar.name]: newVar.config,
                       };
                       handleChange("platform_settings", {
                         ...editedForm.platform_settings,
-                        data_collection: updatedCollection
+                        data_collection: updatedCollection,
                       });
                     }}
                     className="flex items-center space-x-2 px-3 py-1.5 text-sm font-lato font-semibold text-primary hover:text-primary-600 dark:text-primary-400 dark:hover:text-primary-300 bg-primary-50/50 dark:bg-primary-400/10 rounded-lg transition-colors"
@@ -2107,7 +2334,9 @@ const AgentDetails = () => {
                 </div>
 
                 <div className="space-y-4">
-                  {Object.entries(editedForm.platform_settings?.data_collection || {}).length === 0 ? (
+                  {Object.entries(
+                    editedForm.platform_settings?.data_collection || {},
+                  ).length === 0 ? (
                     <div className="text-center py-8 bg-gray-50 dark:bg-dark-100 rounded-xl">
                       <Database className="w-12 h-12 text-gray-400 mx-auto mb-2" />
                       <p className="text-sm text-gray-600 dark:text-gray-400">
@@ -2116,7 +2345,9 @@ const AgentDetails = () => {
                     </div>
                   ) : (
                     <div className="divide-y divide-gray-200 dark:divide-dark-100">
-                      {Object.entries(editedForm.platform_settings?.data_collection || {}).map(([varName, varConfig]) => (
+                      {Object.entries(
+                        editedForm.platform_settings?.data_collection || {},
+                      ).map(([varName, varConfig]) => (
                         <DataCollectionVariable
                           key={varName}
                           varName={varName}
@@ -2128,36 +2359,44 @@ const AgentDetails = () => {
                             setEditingVarValue(value);
                           }}
                           onSave={(oldName, newName) => {
-                            const oldConfig = editedForm.platform_settings?.data_collection?.[oldName];
-                            const newDataCollection = { ...editedForm.platform_settings?.data_collection };
+                            const oldConfig =
+                              editedForm.platform_settings?.data_collection?.[
+                                oldName
+                              ];
+                            const newDataCollection = {
+                              ...editedForm.platform_settings?.data_collection,
+                            };
                             delete newDataCollection[oldName];
                             newDataCollection[newName] = oldConfig;
 
-                            setEditedForm(prev => ({
+                            setEditedForm((prev) => ({
                               ...prev,
                               platform_settings: {
                                 ...prev.platform_settings,
-                                data_collection: newDataCollection
-                              }
+                                data_collection: newDataCollection,
+                              },
                             }));
                             setEditingVarName(null);
                             setHasChanges(true);
                           }}
                           onCancel={() => setEditingVarName(null)}
                           onDelete={(name) => {
-                            const { [name]: _, ...rest } = editedForm.platform_settings?.data_collection || {};
+                            const { [name]: _, ...rest } =
+                              editedForm.platform_settings?.data_collection ||
+                              {};
                             handleChange("platform_settings", {
                               ...editedForm.platform_settings,
-                              data_collection: rest
+                              data_collection: rest,
                             });
                           }}
                           onChange={(name, config) => {
                             handleChange("platform_settings", {
                               ...editedForm.platform_settings,
                               data_collection: {
-                                ...editedForm.platform_settings?.data_collection,
-                                [name]: config
-                              }
+                                ...editedForm.platform_settings
+                                  ?.data_collection,
+                                [name]: config,
+                              },
                             });
                           }}
                         />
@@ -2224,13 +2463,16 @@ const AgentDetails = () => {
                                   e.preventDefault();
                                   e.stopPropagation();
                                   // Remove tool_id from editedForm.tool_ids
-                                  const updatedToolIds = editedForm.tool_ids.filter(
-                                    (toolId) => toolId !== tool.tool_id
-                                  );
+                                  const updatedToolIds =
+                                    editedForm.tool_ids.filter(
+                                      (toolId) => toolId !== tool.tool_id,
+                                    );
                                   handleChange("tool_ids", updatedToolIds);
                                   // Remove from toolsForDisplay
                                   setToolsForDisplay((prev) =>
-                                    prev.filter((t) => t.tool_id !== tool.tool_id)
+                                    prev.filter(
+                                      (t) => t.tool_id !== tool.tool_id,
+                                    ),
                                   );
                                 }}
                                 className="p-2 text-gray-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
@@ -2260,19 +2502,22 @@ const AgentDetails = () => {
                   </h3>
                 </div>
                 <WebhookVariable
-                  url={editedForm.platform_settings?.workspace_overrides?.conversation_initiation_client_data_webhook?.url || ''}
+                  url={
+                    editedForm.platform_settings?.workspace_overrides
+                      ?.conversation_initiation_client_data_webhook?.url || ""
+                  }
                   onChange={(url) => {
-                    handleChange('platform_settings', {
+                    handleChange("platform_settings", {
                       ...editedForm.platform_settings,
                       workspace_overrides: {
                         ...editedForm.platform_settings?.workspace_overrides,
                         conversation_initiation_client_data_webhook: {
                           url,
                           request_headers: {
-                            "Content-Type": "application/json"
-                          }
-                        }
-                      }
+                            "Content-Type": "application/json",
+                          },
+                        },
+                      },
                     });
                   }}
                 />
@@ -2352,8 +2597,8 @@ const AgentDetails = () => {
         {/* Call Testing Section */}
         <div className="w-96">
           {agent && (
-            <CallTesting 
-              agentId={agent.agent_id} 
+            <CallTesting
+              agentId={agent.agent_id}
               dynamicVariables={dynamicVariablePlaceholders}
             />
           )}
@@ -2383,6 +2628,7 @@ const AgentDetails = () => {
           onUpdate={handleToolUpdate}
           existingTools={toolsForDisplay}
           agentId={agentId}
+          userId={user.uid}
           isCreating={isCreatingTool}
         />
       )}
@@ -2446,12 +2692,15 @@ const AgentDetails = () => {
                           type="number"
                           value={userNumberOfPages}
                           onChange={(e) => setUserNumberOfPages(e.target.value)}
-                          placeholder={(editedForm.knowledge_base.length * 10).toString()}
+                          placeholder={(
+                            editedForm.knowledge_base.length * 10
+                          ).toString()}
                           className="input"
                           min="0"
                         />
                         <p className="text-xs text-gray-500 dark:text-gray-400">
-                          Current: {editedForm.knowledge_base.length * 10} pages (estimated)
+                          Current: {editedForm.knowledge_base.length * 10} pages
+                          (estimated)
                         </p>
                       </div>
                     </div>
@@ -2467,8 +2716,12 @@ const AgentDetails = () => {
                   <div className="mb-6">
                     <button
                       onClick={() => {
-                        const promptLength = userPromptLength ? parseInt(userPromptLength) : undefined;
-                        const numberOfPages = userNumberOfPages ? parseInt(userNumberOfPages) : undefined;
+                        const promptLength = userPromptLength
+                          ? parseInt(userPromptLength)
+                          : undefined;
+                        const numberOfPages = userNumberOfPages
+                          ? parseInt(userNumberOfPages)
+                          : undefined;
                         calculateLLMUsage(promptLength, numberOfPages);
                       }}
                       disabled={loadingLLMUsage}
@@ -2512,43 +2765,48 @@ const AgentDetails = () => {
                         Estimated Costs Per Minute
                       </h3>
                       <div className="space-y-3">
-                        {llmUsageData.llm_prices.map((item: any, index: number) => (
-                          <div
-                            key={index}
-                            className={`p-4 rounded-lg border-2 ${
-                              item.llm === editedForm.llm
-                                ? 'border-primary bg-primary-50/50 dark:border-primary-400 dark:bg-primary-400/10'
-                                : 'border-gray-200 dark:border-dark-100 bg-white dark:bg-dark-100'
-                            }`}
-                          >
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center space-x-3">
-                                <div className={`w-3 h-3 rounded-full ${
-                                  item.llm === editedForm.llm
-                                    ? 'bg-primary'
-                                    : 'bg-gray-400 dark:bg-gray-500'
-                                }`} />
-                                <span className="font-medium text-gray-900 dark:text-white">
-                                  {item.llm}
-                                  {item.llm === editedForm.llm && (
-                                    <span className="ml-2 text-xs font-lato font-semibold text-primary dark:text-primary-400">
-                                      (Current)
-                                    </span>
-                                  )}
+                        {llmUsageData.llm_prices.map(
+                          (item: any, index: number) => (
+                            <div
+                              key={index}
+                              className={`p-4 rounded-lg border-2 ${
+                                item.llm === editedForm.llm
+                                  ? "border-primary bg-primary-50/50 dark:border-primary-400 dark:bg-primary-400/10"
+                                  : "border-gray-200 dark:border-dark-100 bg-white dark:bg-dark-100"
+                              }`}
+                            >
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center space-x-3">
+                                  <div
+                                    className={`w-3 h-3 rounded-full ${
+                                      item.llm === editedForm.llm
+                                        ? "bg-primary"
+                                        : "bg-gray-400 dark:bg-gray-500"
+                                    }`}
+                                  />
+                                  <span className="font-medium text-gray-900 dark:text-white">
+                                    {item.llm}
+                                    {item.llm === editedForm.llm && (
+                                      <span className="ml-2 text-xs font-lato font-semibold text-primary dark:text-primary-400">
+                                        (Current)
+                                      </span>
+                                    )}
+                                  </span>
+                                </div>
+                                <span className="text-lg font-heading font-bold text-gray-900 dark:text-white">
+                                  ${item.price_per_minute.toFixed(4)}/min
                                 </span>
                               </div>
-                              <span className="text-lg font-heading font-bold text-gray-900 dark:text-white">
-                                ${item.price_per_minute.toFixed(4)}/min
-                              </span>
                             </div>
-                          </div>
-                        ))}
+                          ),
+                        )}
                       </div>
-                      
+
                       <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20 rounded-lg">
                         <p className="text-sm text-blue-800 dark:text-blue-200">
-                          <strong>Note:</strong> These are estimated costs based on your current configuration. 
-                          Actual costs may vary depending on conversation length and complexity.
+                          <strong>Note:</strong> These are estimated costs based
+                          on your current configuration. Actual costs may vary
+                          depending on conversation length and complexity.
                         </p>
                       </div>
                     </div>
