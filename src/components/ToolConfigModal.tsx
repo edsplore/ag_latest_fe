@@ -1223,6 +1223,25 @@ export const ToolConfigModal = ({
                           rows={3}
                         />
                       </div>
+                       {selectedToolDetails.api_schema && (
+                        <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                          <h3 className="text-sm font-lato font-semibold text-gray-900 dark:text-white mb-3">
+                            API Schema
+                          </h3>
+                          <div className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                            <strong>Webhook URL:</strong> {selectedToolDetails.api_schema?.url || 'N/A'}
+                          </div>
+                          <div className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                            <strong>Method:</strong> {selectedToolDetails.api_schema?.method || 'N/A'}
+                          </div>
+                          <div className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                            <strong>Request Body Schema:</strong>
+                          </div>
+                          <pre className="text-sm font-mono bg-white dark:bg-dark-200 p-4 rounded-lg border border-gray-200 dark:border-dark-100 overflow-x-auto">
+                            {JSON.stringify(selectedToolDetails.api_schema?.request_body_schema, null, 2)}
+                          </pre>
+                        </div>
+                      )}
                     </div>
                   )}
 
