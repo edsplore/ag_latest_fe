@@ -692,21 +692,7 @@ const AgentDetails = () => {
 
   // Open tool modal for adding new tool
   const handleCreateTool = () => {
-    const newTool = {
-      type: "webhook",
-      name: "",
-      description: "",
-      api_schema: {
-        url: "",
-        method: "POST",
-        request_body_schema: {
-          type: "object",
-          properties: {},
-          required: [],
-        },
-      },
-    };
-    setSelectedTool(newTool);
+    setSelectedTool({});
     setIsCreatingTool(true);
   };
 
