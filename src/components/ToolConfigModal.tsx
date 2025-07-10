@@ -167,6 +167,10 @@ export const ToolConfigModal = ({
     ghlLocationId: ""
   });
 
+  const [calConfig, setCalConfig] = useState({
+    calApiKey: ""
+  });
+
   const [userTools, setUserTools] = useState<UserTool[]>([]);
   const [toolDetailsCache, setToolDetailsCache] = useState<{ [key: string]: ToolDetails }>({});
   const [selectedToolDetails, setSelectedToolDetails] = useState<ToolDetails | null>(null);
@@ -220,6 +224,12 @@ export const ToolConfigModal = ({
             });
             // Auto-update tool type to ghl_booking for existing GHL tools
             setToolType('ghl_booking');
+          } else if (cachedTool.name === 'CALCOM' && cachedTool.api_schema?.request_body_schema?.properties) {
+            const props = cachedTool.api_schema.request_body_schema.properties;
+            setCalConfig({
+              calApiKey: props.apiKey?.constant_value || ''
+            });
+            setToolType('calcom');
           }
         }
         return;
@@ -250,6 +260,12 @@ export const ToolConfigModal = ({
             });
             // Auto-update tool type to ghl_booking for existing GHL tools
             setToolType('ghl_booking');
+          } else if (toolDetails.name === 'CALCOM' && toolDetails.api_schema?.request_body_schema?.properties) {
+            const props = toolDetails.api_schema.request_body_schema.properties;
+            setCalConfig({
+              calApiKey: props.apiKey?.constant_value || ''
+            });
+            setToolType('calcom');
           }
         }
       } catch (error) {
@@ -293,6 +309,9 @@ export const ToolConfigModal = ({
         ghlCalendarId: "",
         ghlLocationId: ""
       });
+      setCalConfig({
+        calApiKey: ""
+      });
     }
     onClose();
   };
@@ -313,6 +332,13 @@ export const ToolConfigModal = ({
         ghlApiKey: "",
         ghlCalendarId: "",
         ghlLocationId: ""
+      });
+      setSelectedBuiltInKey("");
+      setBuiltInToolConfig(null);
+    } else if (type === "calcom") {
+      // Reset Cal.com config when switching to Cal.com tool
+      setCalConfig({
+        calApiKey: ""
       });
       setSelectedBuiltInKey("");
       setBuiltInToolConfig(null);
@@ -447,6 +473,89 @@ export const ToolConfigModal = ({
         const createdTool = await response.json();
         const updatedToolIds = [...toolIds, createdTool.id];
         onSave(updatedToolIds, builtInTools);
+      } else if (toolType === "calcom" && !editingTool) {
+        // Create new Cal.com booking tool
+        if (!calConfig.calApiKey) {
+          setError("Cal.com API Key is required");
+          return;
+        }
+
+        const calToolConfig = {
+          name: "CALCOM",
+          description: "Create a booking in Cal.com",
+          type: "webhook",
+          response_timeout_secs: 20,
+          api_schema: {
+            url: `${import.meta.env.VITE_BACKEND_URL}/calcom/book/`,
+            method: 'POST',
+            request_body_schema: {
+              type: 'object',
+              properties: {
+                apiKey: {
+                  type: "string",
+                  constant_value: calConfig.calApiKey
+                },
+                startTime: {
+                  type: 'string',
+                  description: 'Event start time in ISO 8601 format with timezone offset (e.g. 2021-06-23T03:30:00+05:30)'
+                },
+                endTime: {
+                  type: 'string',
+                  description: 'Event end time in ISO 8601 format with timezone offset (e.g. 2021-06-23T04:30:00+05:30)'
+                },
+                title: {
+                  type: 'string',
+                  description: 'Title or name of the event/appointment to be created in Cal.com'
+                },
+                timezone: {
+                  type: "string",
+                  description: "Timezone of the event in IANA timezone format (e.g. America/New_York, Europe/London)"
+                },
+                contactInfo: {
+                  type: 'object',
+                  properties: {
+                    phone: {
+                      type: 'string',
+                      description: 'Contact phone number with country code'
+                    },
+                    firstName: {
+                      type: 'string',
+                      description: 'First name of the contact'
+                    },
+                    lastName: {
+                      type: 'string',
+                      description: 'Last name of the contact'
+                    },
+                    email: {
+                      type: 'string',
+                      description: 'Email address of the contact'
+                    }
+                  },
+                  required: ['phone'],
+                  description: 'Contact information for Cal.com'
+                }
+              },
+              required: ['startTime', 'endTime', 'title', 'timezone', 'contactInfo']
+            }
+          }
+        };
+
+        const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/tools/create/`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${await user.getIdToken()}`,
+          },
+          body: JSON.stringify({tool_config: calToolConfig, user_id: user.uid}),
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to create Cal.com tool');
+        }
+
+        const createdTool = await response.json();
+        const updatedToolIds = [...toolIds, createdTool.id];
+        onSave(updatedToolIds, builtInTools);
       } else if (toolType === "ghl_booking" && editingTool?.type === 'tool_id' && selectedToolDetails) {
         // Update existing GHL tool
         if (!ghlConfig.ghlApiKey || !ghlConfig.ghlCalendarId || !ghlConfig.ghlLocationId) {
@@ -486,7 +595,38 @@ export const ToolConfigModal = ({
 
         // Keep existing tool IDs since we're updating, not adding
         onSave(toolIds, builtInTools);
-      } else {
+      } else if (toolType === "calcom" && editingTool?.type === 'tool_id' && selectedToolDetails) {
+        // Update existing Cal.com tool
+        if (!calConfig.calApiKey) {
+          setError("Cal.com API Key is required");
+          return;
+        }
+
+        let updatedToolDetails = { ...selectedToolDetails };
+        updatedToolDetails.api_schema.request_body_schema.properties = {
+          ...selectedToolDetails.api_schema.request_body_schema.properties,
+          apiKey: {
+            ...selectedToolDetails.api_schema.request_body_schema.properties.apiKey,
+            constant_value: calConfig.calApiKey
+          }
+        };
+
+        const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/tools/${user.uid}/${selectedToolId}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${await user.getIdToken()}`,
+          },
+          body: JSON.stringify({ tool_config: updatedToolDetails }),
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to update Cal.com tool');
+        }
+
+        // Keep existing tool IDs since we're updating, not adding
+        onSave(toolIds, builtInTools);
+      }else {
         // Handle existing tool ID selection or update
         if (editingTool?.type === 'tool_id' && selectedToolDetails) {
           // Update existing tool
@@ -512,6 +652,19 @@ export const ToolConfigModal = ({
               locationId: {
                 ...selectedToolDetails.api_schema.request_body_schema.properties.locationId,
                 constant_value: ghlConfig.ghlLocationId
+              }
+            };
+          } else if (selectedToolDetails.name === 'CALCOM' && selectedToolDetails.api_schema?.request_body_schema?.properties) {
+            if (!calConfig.calApiKey) {
+              setError("Cal.com API Key is required");
+              return;
+            }
+
+            updatedToolDetails.api_schema.request_body_schema.properties = {
+              ...selectedToolDetails.api_schema.request_body_schema.properties,
+              apiKey: {
+                ...selectedToolDetails.api_schema.request_body_schema.properties.apiKey,
+                constant_value: calConfig.calApiKey
               }
             };
           }
@@ -550,7 +703,8 @@ export const ToolConfigModal = ({
   const getToolTypeOptions = () => {
     const options = [
       { value: "add_new", label: "➕ Add New Tool", icon: Plus },
-      { value: "ghl_booking", label: "🗓️ GHL Booking Tool", icon: Webhook }
+      { value: "ghl_booking", label: "🗓️ GHL Booking Tool", icon: Webhook },
+      { value: "calcom", label: "🗓️ Cal.com Booking Tool", icon: Webhook }
     ];
 
     // Add user's available tools
@@ -579,7 +733,8 @@ export const ToolConfigModal = ({
   const isBuiltInTool = BUILT_IN_TOOL_KEYS.includes(toolType);
   const isNewTool = toolType === "add_new";
   const isGhlTool = toolType === "ghl_booking" || selectedToolDetails?.name === 'GHL_BOOKING';
-  const isExistingTool = !isBuiltInTool && !isNewTool && !isGhlTool;
+  const isCalTool = toolType === "calcom" || selectedToolDetails?.name === 'CALCOM';
+  const isExistingTool = !isBuiltInTool && !isNewTool && !isGhlTool && !isCalTool;
 
   return (
     <AnimatePresence>
@@ -850,8 +1005,94 @@ export const ToolConfigModal = ({
                     </div>
                   )}
 
+                    {/* Cal.com Tool Configuration */}
+                  {(isCalTool || (selectedToolDetails?.name === 'CALCOM')) && (
+                    <div className="space-y-4">
+                      <div className="p-4 bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20 rounded-lg">
+                        <p className="text-sm text-blue-800 dark:text-blue-200">
+                          {isCalTool ? 'Create a Cal.com booking tool with automatic schema configuration.' : 'Cal.com Booking Tool Configuration'}
+                        </p>
+                      </div>
+
+                      {/* Show tool name and description for existing Cal.com tools */}
+                      {selectedToolDetails && (
+                        <>
+                          <div>
+                            <label className="block text-sm font-lato font-semibold text-gray-900 dark:text-white mb-2">
+                              Tool Name
+                            </label>
+                            <input
+                              type="text"
+                              value={selectedToolDetails.name}
+                              onChange={(e) => setSelectedToolDetails(prev => prev ? { ...prev, name: e.target.value } : null)}
+                              className="input font-lato font-semibold focus:border-primary dark:focus:border-primary-400"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-lato font-semibold text-gray-900 dark:text-white mb-2">
+                              Description
+                            </label>
+                            <textarea
+                              value={selectedToolDetails.description}
+                              onChange={(e) => setSelectedToolDetails(prev => prev ? { ...prev, description: e.target.value } : null)}
+                              className="input font-lato font-semibold focus:border-primary dark:focus:border-primary-400"
+                              rows={3}
+                            />
+                          </div>
+                        </>
+                      )}
+
+                      <div>
+                        <label className="block text-sm font-lato font-semibold text-gray-900 dark:text-white mb-2">
+                          Cal.com API Key <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={calConfig.calApiKey}
+                          onChange={(e) => setCalConfig(prev => ({ ...prev, calApiKey: e.target.value }))}
+                          className="input font-lato font-semibold focus:border-primary dark:focus:border-primary-400"
+                          placeholder="Enter your Cal.com API key"
+                        />
+                      </div>
+
+                      <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                        <h3 className="text-sm font-lato font-semibold text-gray-900 dark:text-white mb-3">
+                          {selectedToolDetails ? 'API Schema (Auto-configured)' : 'Required Parameters (Auto-configured)'}
+                        </h3>
+                        {selectedToolDetails?.api_schema && (
+                          <>
+                            <div className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                              <strong>Endpoint:</strong> {selectedToolDetails.api_schema?.url || 'N/A'}
+                            </div>
+                            <div className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                              <strong>Method:</strong> {selectedToolDetails.api_schema?.method || 'N/A'}
+                            </div>
+                            <div className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                              <strong>Required Parameters:</strong>
+                            </div>
+                          </>
+                        )}
+                        <pre className="text-sm font-mono bg-white dark:bg-dark-200 p-4 rounded-lg border border-gray-200 dark:border-dark-100 overflow-x-auto">
+                          {`{
+  "startTime": "2021-06-23T03:30:00+05:30",
+  "endTime": "2021-06-23T04:30:00+05:30", 
+  "title": "Test Event",
+  "timezone": "America/New_York",
+  "contactInfo": {
+    "phone": "+15551234567",
+    "firstName": "John",
+    "lastName": "Doe", 
+    "email": "john.doe@example.com"
+  }
+}`}
+                        </pre>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Non-GHL Existing Tool Details */}
-                  {isExistingTool && selectedToolDetails && selectedToolDetails.name !== 'GHL_BOOKING' && (
+                  {isExistingTool && selectedToolDetails && selectedToolDetails.name !== 'GHL_BOOKING' && selectedToolDetails.name !== 'CALCOM' && (
                     <div className="space-y-4">
                       <div className="p-4 bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20 rounded-lg">
                         <p className="text-sm text-blue-800 dark:text-blue-200">
@@ -860,8 +1101,7 @@ export const ToolConfigModal = ({
                       </div>
 
                       <div>
-                        <label className="block text-sm font-lato font-semibold```python
- text-gray-900 dark:text-white mb-2">
+                        <label className="block text-sm font-lato font-semibold text-gray-900 dark:text-white mb-2">
                           Tool Name
                         </label>
                         <input
@@ -992,20 +1232,22 @@ export const ToolConfigModal = ({
                 <button
                   onClick={handleSaveAndClose}
                   disabled={
-                    loadingToolDetails ||
-                    (isNewTool && !newToolConfig.name.trim()) ||
-                    (isBuiltInTool && !builtInToolConfig) ||
-                    (isGhlTool && (!ghlConfig.ghlApiKey || !ghlConfig.ghlCalendarId || !ghlConfig.ghlLocationId))
-                  }
+                      loadingToolDetails ||
+                      (isNewTool && !newToolConfig.name.trim()) ||
+                      (isBuiltInTool && !builtInToolConfig) ||
+                      (isGhlTool && (!ghlConfig.ghlApiKey || !ghlConfig.ghlCalendarId || !ghlConfig.ghlLocationId)) ||
+                      (isCalTool && !calConfig.calApiKey)
+                    }
                   className={cn(
-                    "px-4 py-2 text-sm font-lato font-semibold text-white bg-primary rounded-lg",
-                    "hover:bg-primary-600 transition-colors",
-                    (loadingToolDetails ||
-                     (isNewTool && !newToolConfig.name.trim()) ||
-                     (isBuiltInTool && !builtInToolConfig) ||
-                     (isGhlTool && (!ghlConfig.ghlApiKey || !ghlConfig.ghlCalendarId || !ghlConfig.ghlLocationId))) &&
-                      "opacity-50 cursor-not-allowed",
-                  )}
+                      "px-4 py-2 text-sm font-lato font-semibold text-white bg-primary rounded-lg",
+                      "hover:bg-primary-600 transition-colors",
+                      (loadingToolDetails ||
+                       (isNewTool && !newToolConfig.name.trim()) ||
+                       (isBuiltInTool && !builtInToolConfig) ||
+                       (isGhlTool && (!ghlConfig.ghlApiKey || !ghlConfig.ghlCalendarId || !ghlConfig.ghlLocationId)) ||
+                       (isCalTool && !calConfig.calApiKey)) &&
+                        "opacity-50 cursor-not-allowed",
+                    )}
                 >
                   {editingTool ? 'Save Changes' : 'Add Tool'}
                 </button>
