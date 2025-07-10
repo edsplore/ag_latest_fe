@@ -717,93 +717,16 @@ export const ToolConfigModal = ({
                         />
                       </div>
 
-                      {/* Show GHL Configuration if it's a GHL tool */}
-                      {selectedToolDetails.name === 'GHL_BOOKING' && (
-                        <div className="space-y-4">
-                          <div className="p-4 bg-green-50 dark:bg-green-500/10 border border-green-100 dark:border-green-500/20 rounded-lg">
-                            <p className="text-sm text-green-800 dark:text-green-200">
-                              GHL Booking Tool Configuration
-                            </p>
-                          </div>
-
-                          <div>
-                            <label className="block text-sm font-lato font-semibold text-gray-900 dark:text-white mb-2">
-                              GHL API Key
-                            </label>
-                            <input
-                              type="text"
-                              value={ghlConfig.ghlApiKey}
-                              onChange={(e) => setGhlConfig(prev => ({ ...prev, ghlApiKey: e.target.value }))}
-                              className="input font-lato font-semibold focus:border-primary dark:focus:border-primary-400"
-                              placeholder="Enter your GHL API key"
-                            />
-                          </div>
-
-                          <div>
-                            <label className="block text-sm font-lato font-semibold text-gray-900 dark:text-white mb-2">
-                              Calendar ID
-                            </label>
-                            <input
-                              type="text"
-                              value={ghlConfig.ghlCalendarId}
-                              onChange={(e) => setGhlConfig(prev => ({ ...prev, ghlCalendarId: e.target.value }))}
-                              className="input font-lato font-semibold focus:border-primary dark:focus:border-primary-400"
-                              placeholder="Enter GHL calendar ID"
-                            />
-                          </div>
-
-                          <div>
-                            <label className="block text-sm font-lato font-semibold text-gray-900 dark:text-white mb-2">
-                              Location ID
-                            </label>
-                            <input
-                              type="text"
-                              value={ghlConfig.ghlLocationId}
-                              onChange={(e) => setGhlConfig(prev => ({ ...prev, ghlLocationId: e.target.value }))}
-                              className="input font-lato font-semibold focus:border-primary dark:focus:border-primary-400"
-                              placeholder="Enter GHL location ID"
-                            />
-                          </div>
-
-                          <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                            <h3 className="text-sm font-lato font-semibold text-gray-900 dark:text-white mb-3">
-                              API Schema (Auto-configured)
-                            </h3>
-                            <div className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-                              <strong>Endpoint:</strong> {selectedToolDetails.api_schema?.url || 'N/A'}
-                            </div>
-                            <div className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-                              <strong>Method:</strong> {selectedToolDetails.api_schema?.method || 'N/A'}
-                            </div>
-                            <div className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                              <strong>Required Parameters:</strong>
-                            </div>
-                            <pre className="text-sm font-mono bg-white dark:bg-dark-200 p-4 rounded-lg border border-gray-200 dark:border-dark-100 overflow-x-auto">
-                              {`{
-  "startTime": "2021-06-23T03:30:00+05:30",
-  "endTime": "2021-06-23T04:30:00+05:30", 
-  "title": "Test Event",
-  "timezone": "America/New_York",
-  "contactInfo": {
-    "phone": "+15551234567",
-    "firstName": "John",
-    "lastName": "Doe", 
-    "email": "john.doe@example.com"
-  }
-}`}
-                            </pre>
-                          </div>
-                        </div>
-                      )}
+                      
                     </div>
                   )}
 
                   {/* GHL Tool Configuration */}
-                  {isGhlTool && (
+                  {(isGhlTool || (isExistingTool && selectedToolDetails?.name === 'GHL_BOOKING')) && (
                     <div className="space-y-4">
                       <div className="p-4 bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20 rounded-lg">
                         <p className="text-sm text-blue-800 dark:text-blue-200">
-                          Create a GHL booking tool with automatic schema configuration.
+                          {isGhlTool ? 'Create a GHL booking tool with automatic schema configuration.' : 'GHL Booking Tool Configuration'}
                         </p>
                       </div>
 
@@ -848,8 +771,21 @@ export const ToolConfigModal = ({
 
                       <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
                         <h3 className="text-sm font-lato font-semibold text-gray-900 dark:text-white mb-3">
-                          Required Parameters (Auto-configured)
+                          {isExistingTool ? 'API Schema (Auto-configured)' : 'Required Parameters (Auto-configured)'}
                         </h3>
+                        {isExistingTool && selectedToolDetails?.api_schema && (
+                          <>
+                            <div className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                              <strong>Endpoint:</strong> {selectedToolDetails.api_schema?.url || 'N/A'}
+                            </div>
+                            <div className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                              <strong>Method:</strong> {selectedToolDetails.api_schema?.method || 'N/A'}
+                            </div>
+                            <div className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                              <strong>Required Parameters:</strong>
+                            </div>
+                          </>
+                        )}
                         <pre className="text-sm font-mono bg-white dark:bg-dark-200 p-4 rounded-lg border border-gray-200 dark:border-dark-100 overflow-x-auto">
                           {`{
   "startTime": "2021-06-23T03:30:00+05:30",
