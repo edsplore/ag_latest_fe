@@ -215,7 +215,7 @@ const PaymentForm: React.FC<{ onSuccess: () => void }> = ({ onSuccess }) => {
           className="mb-6 grid grid-cols-1 gap-3"
         >
           {[
-            { icon: Zap, text: "Access to voice calls" },
+            { icon: Zap, text: "Unlimited voice calls" },
             { icon: Shield, text: "Priority support" },
             { icon: Sparkles, text: "Advanced AI features" }
           ].map((feature, index) => (
@@ -449,7 +449,7 @@ const Payment: React.FC = () => {
                 {/* Features list */}
                 <div className="mb-8 space-y-3">
                   {[
-                    { icon: Zap, text: "Agentic voice calls & conversations" },
+                    { icon: Zap, text: "Unlimited voice calls & conversations" },
                     { icon: Shield, text: "Enterprise-grade security & support" },
                     { icon: Sparkles, text: "Advanced AI models & features" }
                   ].map((feature, index) => (
@@ -481,7 +481,7 @@ const Payment: React.FC = () => {
                   </div>
                 </motion.button>
                 
-                <p className="mt-4 text-xs text-gray-400">One-time payment • No subscription • Full access</p>
+                <p className="mt-4 text-xs text-gray-400">Pay for Usage• No subscription • Full access</p>
               </div>
             </motion.div>
           ) : (
