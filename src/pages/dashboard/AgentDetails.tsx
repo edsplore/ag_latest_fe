@@ -58,6 +58,16 @@ interface PrivacySettings {
   zero_retention_mode?: boolean;
 }
 
+interface BuiltInTool {
+  name: string;
+  description: string;
+  response_timeout_secs: number;
+  type: "system";
+  params: {
+    system_tool_type: string;
+  };
+}
+
 interface AgentDetails {
   agent_id: string;
   name: string;
@@ -87,15 +97,10 @@ interface AgentDetails {
           name: string;
           type: string;
         }[];
-        tools: {
-          type: string;
-          name: string;
-          description: string;
-          api_schema: {
-            url: string;
-            method: string;
-          };
-        }[];
+        tool_ids: string[];
+        built_in_tools: {
+          [key: string]: BuiltInTool;
+        };
       };
       first_message: string;
       language: string;
@@ -185,6 +190,10 @@ interface EditForm {
     name: string;
     type: string;
   }>;
+  tool_ids: string[];
+  built_in_tools: {
+    [key: string]: BuiltInTool;
+  };
   tools: Array<{
     type: string;
     name: string;
@@ -272,6 +281,8 @@ const AgentDetails = () => {
       }
     },
     knowledge_base: [],
+    tool_ids: [],
+    built_in_tools: {},
     tools: [],
     platform_settings: {
       data_collection: {},
@@ -365,6 +376,9 @@ const AgentDetails = () => {
         },
         knowledge_base:
           agentData.conversation_config.agent.prompt.knowledge_base || [],
+        tool_ids: agentData.conversation_config.agent.prompt.tool_ids || [],
+        built_in_tools: agentData.conversation_config.agent.prompt.built_in_tools || {},
+        // Keep legacy tools for backward compatibility during transition
         tools: agentData.conversation_config.agent.prompt.tools || [],
         platform_settings: {
           data_collection: agentData.platform_settings?.data_collection || {},
@@ -535,7 +549,8 @@ const AgentDetails = () => {
                     custom_llm: editedForm.custom_llm
                   } : {}),
                   knowledge_base: editedForm.knowledge_base,
-                  tools: editedForm.tools,
+                  tool_ids: editedForm.tool_ids,
+                  built_in_tools: editedForm.built_in_tools,
                 },
                 first_message: conversationInitiationMode === "user" ? "" : editedForm.first_message,
                 language: editedForm.language,
@@ -709,32 +724,79 @@ const AgentDetails = () => {
 
   // Save a tool (either new or edited)
   const handleToolSave = (updatedTool: any) => {
-    if (isCreatingTool) {
+    if (updatedTool.type === "system") {
+      // Handle built-in tools
+      const toolKey = updatedTool.name.toLowerCase();
+      const builtInTool: BuiltInTool = {
+        name: updatedTool.name,
+        description: updatedTool.description || "",
+        response_timeout_secs: updatedTool.response_timeout_secs || 20,
+        type: "system",
+        params: {
+          system_tool_type: updatedTool.name.toLowerCase()
+        }
+      };
+
       setEditedForm((prev) => ({
         ...prev,
-        tools: [...(prev.tools || []), { ...updatedTool, method: "POST" }],
+        built_in_tools: {
+          ...prev.built_in_tools,
+          [toolKey]: builtInTool
+        }
       }));
-      setIsCreatingTool(false);
     } else {
-      const updatedTools = editedForm.tools.map((tool) =>
-        tool.name === selectedTool?.name
-          ? { ...updatedTool, method: "POST" }
-          : tool,
-      );
-      setEditedForm((prev) => ({
-        ...prev,
-        tools: updatedTools,
-      }));
+      // Handle webhook tools - add to tool_ids (assuming we have the tool ID)
+      if (isCreatingTool) {
+        // For new tools, we might need to generate an ID or get it from the backend
+        const toolId = updatedTool.id || updatedTool.name; // Fallback to name if no ID
+        setEditedForm((prev) => ({
+          ...prev,
+          tool_ids: [...prev.tool_ids, toolId],
+          tools: [...(prev.tools || []), { ...updatedTool, method: "POST" }],
+        }));
+        setIsCreatingTool(false);
+      } else {
+        // For existing tools, update the tools array (for display) and tool_ids
+        const updatedTools = editedForm.tools.map((tool) =>
+          tool.name === selectedTool?.name
+            ? { ...updatedTool, method: "POST" }
+            : tool,
+        );
+        setEditedForm((prev) => ({
+          ...prev,
+          tools: updatedTools,
+        }));
+      }
     }
     setSelectedTool(null);
     setHasChanges(true);
   };
 
   const handleToolUpdate = (updatedTool: any) => {
-    const updatedTools = editedForm.tools.map((tool) =>
-      tool.name === updatedTool.name ? updatedTool : tool,
-    );
-    handleChange("tools", updatedTools);
+    if (updatedTool.type === "system") {
+      // Handle built-in tools
+      const toolKey = updatedTool.name.toLowerCase();
+      const builtInTool: BuiltInTool = {
+        name: updatedTool.name,
+        description: updatedTool.description || "",
+        response_timeout_secs: updatedTool.response_timeout_secs || 20,
+        type: "system",
+        params: {
+          system_tool_type: updatedTool.name.toLowerCase()
+        }
+      };
+
+      handleChange("built_in_tools", {
+        ...editedForm.built_in_tools,
+        [toolKey]: builtInTool
+      });
+    } else {
+      // Handle webhook tools
+      const updatedTools = editedForm.tools.map((tool) =>
+        tool.name === updatedTool.name ? updatedTool : tool,
+      );
+      handleChange("tools", updatedTools);
+    }
   };
 
   // Called when user picks a new voice in the VoiceModal
@@ -2156,18 +2218,68 @@ const AgentDetails = () => {
                 </div>
 
                 <div className="space-y-4">
-                  {editedForm.tools?.length === 0 ? (
+                  {(editedForm.tools?.length === 0 && Object.keys(editedForm.built_in_tools).length === 0) ? (
                     <div className="text-center py-8 bg-gray-50 dark:bg-dark-100 rounded-xl">
                       <Webhook className="w-12 h-12 text-gray-400 mx-auto mb-2" />
                       <p className="text-sm text-gray-600 dark:text-gray-400">
                         No tools configured
                       </p>
                       <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                        Tools functionality coming soon
+                        Add webhook tools or built-in system tools
                       </p>
                     </div>
                   ) : (
                     <div className="divide-y divide-gray-200 dark:divide-dark-100">
+                      {/* Built-in Tools */}
+                      {Object.entries(editedForm.built_in_tools).map(([key, builtInTool]) => (
+                        <div
+                          key={key}
+                          className="py-4 first:pt-0 last:pb-0 hover:bg-gray-50 dark:hover:bg-dark-100 transition-colors rounded-lg"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div
+                              className="flex items-center space-x-3"
+                              onClick={() => setSelectedTool({ ...builtInTool, type: "system" })}
+                              style={{ cursor: "pointer" }}
+                            >
+                              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-green-500/20 to-green-500/10 dark:from-green-500/30 dark:to-green-500/20 flex items-center justify-center">
+                                <Settings className="w-5 h-5 text-green-500 dark:text-green-400" />
+                              </div>
+                              <div>
+                                <h4 className="text-sm font-medium text-gray-900 dark:text-white">
+                                  {builtInTool.name}
+                                  <span className="ml-2 text-xs bg-green-100 dark:bg-green-500/20 text-green-800 dark:text-green-300 px-2 py-0.5 rounded-full">
+                                    System
+                                  </span>
+                                </h4>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                                  {builtInTool.description || `Built-in ${builtInTool.name} tool`}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <button
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  const { [key]: _, ...rest } = editedForm.built_in_tools;
+                                  handleChange("built_in_tools", rest);
+                                }}
+                                className="p-2 text-gray-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                              <ChevronRight
+                                className="w-5 h-5 text-gray-400 dark:text-gray-500"
+                                style={{ cursor: "pointer" }}
+                                onClick={() => setSelectedTool({ ...builtInTool, type: "system" })}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                      
+                      {/* Webhook Tools */}
                       {editedForm.tools.map((tool, index) => (
                         <div
                           key={index}
@@ -2185,6 +2297,9 @@ const AgentDetails = () => {
                               <div>
                                 <h4 className="text-sm font-medium text-gray-900 dark:text-white">
                                   {tool.name}
+                                  <span className="ml-2 text-xs bg-blue-100 dark:bg-blue-500/20 text-blue-800 dark:text-blue-300 px-2 py-0.5 rounded-full">
+                                    Webhook
+                                  </span>
                                 </h4>
                                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                                   {tool.description}
@@ -2199,7 +2314,15 @@ const AgentDetails = () => {
                                   const updatedTools = editedForm.tools.filter(
                                     (_, i) => i !== index,
                                   );
-                                  handleChange("tools", updatedTools);
+                                  const updatedToolIds = editedForm.tool_ids.filter(
+                                    (id) => id !== tool.name // Assuming tool name is used as ID
+                                  );
+                                  setEditedForm((prev) => ({
+                                    ...prev,
+                                    tools: updatedTools,
+                                    tool_ids: updatedToolIds
+                                  }));
+                                  setHasChanges(true);
                                 }}
                                 className="p-2 text-gray-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
                               >

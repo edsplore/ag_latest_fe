@@ -50,6 +50,7 @@ interface Tool {
     };
     method?: string;
   };
+  response_timeout_secs?: number;
 }
 
 interface ToolConfigModalProps {
@@ -70,7 +71,7 @@ const validateToolName = (name: string, type: string): string | null => {
   if (type === "webhook" && (name.toLowerCase() === "GHL_BOOKING".toLowerCase() || name.toLowerCase() === "CAL_BOOKING".toLowerCase() || name.toLowerCase() === "END_CALL".toLowerCase() || name.toLowerCase() === "TRANSFER_CALL".toLowerCase())) {
     return "Reserved tool name. Please choose a different name.";
   }
-  if (type === "system" && name !== "END_CALL" && name !== "TRANSFER_CALL") {
+  if (type === "system" && name !== "end_call" && name !== "transfer_call") {
     return "Invalid system tool name";
   }
   return null;
@@ -111,23 +112,23 @@ export const ToolConfigModal = ({
     }
     // For end_call and transfer_call, show if it's the current tool being edited
     if (option.value === 'end_call') {
-      return !existingTools?.some(t => t.name === 'END_CALL') || tool.name === 'END_CALL';
+      return !existingTools?.some(t => t.name === 'end_call') || tool.name === 'end_call';
     }
     if (option.value === 'transfer_call') {
-      return !existingTools?.some(t => t.name === 'TRANSFER_CALL') || tool.name === 'TRANSFER_CALL';
+      return !existingTools?.some(t => t.name === 'transfer_call') || tool.name === 'transfer_call';
     }
     return true;
   });
   const [editedTool, setEditedTool] = useState<Tool>(() => {
     const toolCopy = JSON.parse(JSON.stringify(tool));
-    if (toolCopy.name === "END_CALL") {
+    if (toolCopy.name === "end_call") {
       toolCopy.type = "end_call";
-    } else if (toolCopy.name === "TRANSFER_CALL") {
+    } else if (toolCopy.name === "transfer_call") {
       toolCopy.type = "transfer_call";
     } else {
       toolCopy.type = getDisplayType(toolCopy.name);
     }
-    
+
     // Map saved GHL values from the backend schema if it's a GHL booking tool
     if (toolCopy.name === "GHL_BOOKING" && toolCopy.api_schema?.request_body_schema?.properties) {
       const schema = toolCopy.api_schema.request_body_schema.properties;
@@ -135,13 +136,13 @@ export const ToolConfigModal = ({
       toolCopy.ghlCalendarId = schema.calendarId?.constant_value || '';
       toolCopy.ghlLocationId = schema.locationId?.constant_value || '';
     }
-    
+
     // Map saved Cal.com API key from the backend schema if it's a Cal.com booking tool
     if (toolCopy.name === "CAL_BOOKING" && toolCopy.api_schema?.request_body_schema?.properties) {
       const schema = toolCopy.api_schema.request_body_schema.properties;
       toolCopy.calApiKey = schema.apiKey?.constant_value || '';
     }
-    
+
     return toolCopy;
   });
   const [error, setError] = useState("");
@@ -166,23 +167,24 @@ export const ToolConfigModal = ({
       }
 
       // Determine backend configuration based on tool name
-      let backendConfig: { name: string; type: string; expects_response?: boolean; api_schema?: any, params?: any } = { name: '', type: '' };
+      let backendConfig: { name: string; type: string; expects_response?: boolean; api_schema?: any, params?: any, response_timeout_secs?: number } = { name: '', type: '' };
 
       let updatedTool: Tool;
 
       if (editedTool.type === "end_call") {
         const endCallConfig = {
-          name: "END_CALL",
+          name: "end_call",
           type: "system",
           description: "End the current call",
           params: {
             system_tool_type: "end_call"
-          }
+          },
+          response_timeout_secs: editedTool.response_timeout_secs || 20,
         };
         updatedTool = endCallConfig;
       } else if (editedTool.type === "transfer_call") {
         const transferConfig = {
-          name: "TRANSFER_CALL", 
+          name: "transfer_call", 
           type: "system",
           description: "Transfer the current call to human",
           params: {
@@ -191,7 +193,8 @@ export const ToolConfigModal = ({
               phone_number: editedTool.params?.transfers?.[0]?.phone_number || '',
               condition: "transfer_to_number"
             }]
-          }
+          },
+          response_timeout_secs: editedTool.response_timeout_secs || 20,
         };
         updatedTool = transferConfig;
       }
@@ -424,13 +427,52 @@ export const ToolConfigModal = ({
                     </label>
                     <select
                       value={editedTool.type}
-                      onChange={(e) =>
-                        setEditedTool((prev) => ({
-                          ...prev,
-                          type: e.target.value,
-                          name: e.target.value === "end_call" ? "END_CALL" : e.target.value === "transfer_call" ? "TRANSFER_CALL" : prev.name,
-                        }))
-                      }
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        // Update edited tool state
+                        setEditedTool({ ...editedTool, type: value });
+
+                        // Pre-configure based on type
+                        if (value === "end_call") {
+                          setEditedTool({
+                            ...editedTool,
+                            type: "system",
+                            name: "end_call",
+                            description: "Ends the current call",
+                            response_timeout_secs: 20,
+                          });
+                        } else if (value === "transfer_call") {
+                          setEditedTool({
+                            ...editedTool,
+                            type: "system", 
+                            name: "transfer_call",
+                            description: "Transfers the call to another number",
+                            response_timeout_secs: 20,
+                          });
+                        } else if (value === "ghl_booking") {
+                          setEditedTool({
+                            ...editedTool,
+                            type: "webhook",
+                            name: "GHL_BOOKING",
+                            description: "Books an appointment using GoHighLevel",
+                            api_schema: {
+                              url: "",
+                              method: "POST"
+                            }
+                          });
+                        } else if (value === "calcom") {
+                          setEditedTool({
+                            ...editedTool,
+                            type: "webhook", 
+                            name: "CAL_BOOKING",
+                            description: "Books an appointment using Cal.com",
+                            api_schema: {
+                              url: "",
+                              method: "POST"
+                            }
+                          });
+                        }
+                      }}
                       className="input font-lato font-semibold focus:border-primary dark:focus:border-primary-400"
                     >
                       {toolTypeOptions.map((option) => (
@@ -538,7 +580,7 @@ export const ToolConfigModal = ({
                             placeholder="Enter your GHL API key"
                           />
                         </div>
-                        
+
                         <div>
                           <label className="block text-sm font-lato font-semibold text-gray-900 dark:text-white mb-2">
                             Calendar ID <span className="text-red-500">*</span>
@@ -556,7 +598,7 @@ export const ToolConfigModal = ({
                             placeholder="Enter GHL calendar ID"
                           />
                         </div>
-                        
+
                         <div>
                           <label className="block text-sm font-lato font-semibold text-gray-900 dark:text-white mb-2">
                             Location ID <span className="text-red-500">*</span>
@@ -617,7 +659,7 @@ export const ToolConfigModal = ({
                           placeholder="Enter your Cal.com API key"
                         />
                       </div>
-                      
+
                       <div className="p-4 bg-gray-50 dark:bg-dark-100 rounded-lg">
                         <h3 className="text-sm font-lato font-semibold text-gray-900 dark:text-white mb-3">
                           Required Parameters Example
@@ -662,6 +704,40 @@ export const ToolConfigModal = ({
                     </div>
                   )}
                 </div>
+
+                {/* System Tool Configuration */}
+                {editedTool.type === "system" && (
+                  <div className="space-y-4">
+                    <div className="p-4 bg-green-50 dark:bg-green-500/10 border border-green-100 dark:border-green-500/20 rounded-lg">
+                      <p className="text-sm text-green-800 dark:text-green-200">
+                        This is a system tool that provides built-in functionality.
+                      </p>
+                    </div>
+
+                    {/* Response Timeout */}
+                    <div className="space-y-2">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        Response Timeout (seconds)
+                      </label>
+                      <input
+                        type="number"
+                        value={editedTool.response_timeout_secs || 20}
+                        onChange={(e) =>
+                          setEditedTool({
+                            ...editedTool,
+                            response_timeout_secs: parseInt(e.target.value) || 20,
+                          })
+                        }
+                        className="input"
+                        min="1"
+                        max="120"
+                      />
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                        Maximum time to wait for the tool to respond (1-120 seconds)
+                      </p>
+                    </div>
+                  </div>
+                )}
 
                 {/* Conditionally render Request Body Schema only if type is 'webhook' */}
                 {editedTool.type === "webhook" && (
