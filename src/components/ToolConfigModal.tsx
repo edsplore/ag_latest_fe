@@ -908,7 +908,7 @@ export const ToolConfigModal = ({
 
                       <div>
                         <label className="block text-sm font-lato font-semibold text-gray-900 dark:text-white mb-2">
-                          Description
+                          Description <span className="text-red-500">*</span>
                         </label>
                         <textarea
                           value={newToolConfig.description}
@@ -1333,7 +1333,7 @@ export const ToolConfigModal = ({
                   onClick={handleSaveAndClose}
                   disabled={
                       loadingToolDetails ||
-                      (isNewTool && (!newToolConfig.name.trim() || jsonError || nameError || urlError)) ||
+                      (isNewTool && (!newToolConfig.name.trim() || !newToolConfig.description.trim() || jsonError || nameError || urlError)) ||
                       (isBuiltInTool && !builtInToolConfig) ||
                       (isGhlTool && (!ghlConfig.ghlApiKey || !ghlConfig.ghlCalendarId || !ghlConfig.ghlLocationId)) ||
                       (isCalTool && !calConfig.calApiKey)
@@ -1342,7 +1342,7 @@ export const ToolConfigModal = ({
                       "px-4 py-2 text-sm font-lato font-semibold text-white bg-primary rounded-lg",
                       "hover:bg-primary-600 transition-colors",
                       (loadingToolDetails ||
-                       (isNewTool && (!newToolConfig.name.trim() || jsonError || nameError || urlError)) ||
+                       (isNewTool && (!newToolConfig.name.trim() || !newToolConfig.description.trim() || jsonError || nameError || urlError)) ||
                        (isBuiltInTool && !builtInToolConfig) ||
                        (isGhlTool && (!ghlConfig.ghlApiKey || !ghlConfig.ghlCalendarId || !ghlConfig.ghlLocationId)) ||
                        (isCalTool && !calConfig.calApiKey)) &&
