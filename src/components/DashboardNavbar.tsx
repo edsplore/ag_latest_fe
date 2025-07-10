@@ -1,15 +1,50 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { User, LogOut, X, Mail } from 'lucide-react';
+import { User, LogOut, X, Mail, Wallet, DollarSign } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../lib/firebase';
 import UserImpersonationDropdown from './UserImpersonationDropdown';
 
 export const DashboardNavbar = () => {
   const { user, logout, getEffectiveUser, getEffectiveUserData, isImpersonating } = useAuth();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [totalBalance, setTotalBalance] = useState(0);
+  const [hasToppedUp, setHasToppedUp] = useState(false);
+  const navigate = useNavigate();
 
   const effectiveUser = getEffectiveUser();
   const effectiveUserData = getEffectiveUserData();
+
+  useEffect(() => {
+    fetchUserBalance();
+  }, [effectiveUser]);
+
+  const fetchUserBalance = async () => {
+    if (!effectiveUser) return;
+
+    try {
+      const userDocRef = doc(db, 'users', effectiveUser.uid);
+      const userDoc = await getDoc(userDocRef);
+
+      if (userDoc.exists()) {
+        const userData = userDoc.data();
+        setTotalBalance(userData.totalBalance || 0);
+        setHasToppedUp(userData.hasToppedUp || false);
+      }
+    } catch (error) {
+      console.error('Error fetching user balance:', error);
+    }
+  };
+
+  const handleBalanceClick = () => {
+    if (hasToppedUp) {
+      navigate('/billing'); // Navigate to billing page if topped up
+    } else {
+      navigate('/payment'); // Navigate to payment page if not topped up
+    }
+  };
 
   return (
     <>
@@ -17,6 +52,25 @@ export const DashboardNavbar = () => {
         <div className="h-full px-4 flex items-center justify-end space-x-4">
           {/* User Impersonation Dropdown */}
           <UserImpersonationDropdown />
+          
+          {/* Balance Button */}
+          <motion.button
+            onClick={handleBalanceClick}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            className="flex items-center space-x-2 px-3 py-1.5 rounded-lg bg-gradient-to-r from-primary/10 to-primary-600/10 hover:from-primary/20 hover:to-primary-600/20 border border-primary/20 transition-all duration-300 group"
+          >
+            <div className="w-6 h-6 rounded-md bg-gradient-to-br from-primary/30 to-primary-600/30 flex items-center justify-center">
+              <DollarSign className="w-3 h-3 text-primary dark:text-primary-400" />
+            </div>
+            <div className="flex flex-col items-start">
+              <span className="text-xs text-gray-500 dark:text-gray-400 leading-none">Balance</span>
+              <span className="text-sm font-semibold text-primary dark:text-primary-400 leading-none">
+                ${totalBalance.toFixed(2)}
+              </span>
+            </div>
+            <Wallet className="w-4 h-4 text-primary dark:text-primary-400 group-hover:scale-110 transition-transform" />
+          </motion.button>
           
           {/* User Menu */}
           <motion.button

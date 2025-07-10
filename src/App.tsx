@@ -9,6 +9,7 @@ import AgentDetails from './pages/dashboard/AgentDetails';
 import KnowledgeBaseDetails from './pages/dashboard/KnowledgeBaseDetails';
 import { Loader } from './components/Loader';
 import PaymentWrapper from './components/Payment';
+import Billing from './pages/Billing';
 
 function App() {
   return (
@@ -56,6 +57,7 @@ function App() {
                 </ProtectedRoute>
               } 
             />
+            <Route path="/billing" element={<ProtectedRoute><Billing /></ProtectedRoute>} />
             <Route path="/dashboard/agents/:agentId" element={<ProtectedRoute><AgentDetails /></ProtectedRoute>} />
             <Route path="/dashboard/knowledge/:documentId" element={<ProtectedRoute><KnowledgeBaseDetails /></ProtectedRoute>} />
             <Route 

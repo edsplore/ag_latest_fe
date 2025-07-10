@@ -278,8 +278,15 @@ const Payment: React.FC = () => {
     try {
       // Update user document in Firestore
       const userDocRef = doc(db, "users", user.uid);
+      
+      // Get current user data to update balance
+      const userDoc = await getDoc(userDocRef);
+      const currentData = userDoc.exists() ? userDoc.data() : {};
+      const currentBalance = currentData.totalBalance || 0;
+      
       await updateDoc(userDocRef, {
         hasToppedUp: true,
+        totalBalance: currentBalance + 50, // Add $50 to balance
         updatedAt: new Date(),
       });
 

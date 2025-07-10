@@ -20,6 +20,7 @@ interface UserData {
   createdAt: Date;
   updatedAt: Date;
   hasToppedUp?: boolean;
+  totalBalance?: number;
 }
 
 interface AuthContextType {
@@ -143,7 +144,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         createdByAdmin: false,
         createdAt: new Date(),
         updatedAt: new Date(),
-        hasToppedUp: false
+        hasToppedUp: false,
+        totalBalance: 0
       };
 
       await setDoc(doc(db, 'users', user.uid), userData);
@@ -209,7 +211,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           createdByAdmin: false,
           createdAt: new Date(),
           updatedAt: new Date(),
-          hasToppedUp: false
+          hasToppedUp: false,
+          totalBalance: 0
         };
 
         await setDoc(userDocRef, userData);
