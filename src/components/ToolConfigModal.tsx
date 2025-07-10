@@ -170,6 +170,7 @@ export const ToolConfigModal = ({
   const [userTools, setUserTools] = useState<UserTool[]>([]);
   const [toolDetailsCache, setToolDetailsCache] = useState<{ [key: string]: ToolDetails }>({});
   const [selectedToolDetails, setSelectedToolDetails] = useState<ToolDetails | null>(null);
+    const [selectedToolId, setSelectedToolId] = useState<string | null>(null);
   const [loadingToolDetails, setLoadingToolDetails] = useState(false);
   const [error, setError] = useState("");
 
@@ -207,6 +208,7 @@ export const ToolConfigModal = ({
       if (!user || !toolId || toolDetailsCache[toolId]) {
         if (toolDetailsCache[toolId]) {
           setSelectedToolDetails(toolDetailsCache[toolId]);
+            setSelectedToolId(toolId);
           // Check if it's a GHL tool and extract config
           const cachedTool = toolDetailsCache[toolId];
           if (cachedTool.name === 'GHL_BOOKING' && cachedTool.api_schema?.request_body_schema?.properties) {
@@ -236,6 +238,7 @@ export const ToolConfigModal = ({
           const toolDetails = apiResponse.tool_config;
           setToolDetailsCache(prev => ({ ...prev, [toolId]: toolDetails }));
           setSelectedToolDetails(toolDetails);
+            setSelectedToolId(toolId);
 
           // Check if it's a GHL tool and extract config
           if (toolDetails.name === 'GHL_BOOKING' && toolDetails.api_schema?.request_body_schema?.properties) {
@@ -269,6 +272,7 @@ export const ToolConfigModal = ({
       setSelectedBuiltInKey("");
       setBuiltInToolConfig(null);
       setSelectedToolDetails(null);
+        setSelectedToolId(null);
       setNewToolConfig({
         name: "",
         description: "",
@@ -297,6 +301,7 @@ export const ToolConfigModal = ({
     setToolType(type);
     setError("");
     setSelectedToolDetails(null);
+      setSelectedToolId(null);
 
     if (BUILT_IN_TOOL_KEYS.includes(type)) {
       setSelectedBuiltInKey(type);
@@ -447,14 +452,14 @@ export const ToolConfigModal = ({
         if (editingTool?.type === 'tool_id' && selectedToolDetails) {
           // Update existing tool
           let updatedToolDetails = { ...selectedToolDetails };
-          
+
           // Update GHL configuration if it's a GHL tool
           if (selectedToolDetails.name === 'GHL_BOOKING' && selectedToolDetails.api_schema?.request_body_schema?.properties) {
             if (!ghlConfig.ghlApiKey || !ghlConfig.ghlCalendarId || !ghlConfig.ghlLocationId) {
               setError("All GHL fields (API Key, Calendar ID, Location ID) are required");
               return;
             }
-            
+
             updatedToolDetails.api_schema.request_body_schema.properties = {
               ...selectedToolDetails.api_schema.request_body_schema.properties,
               apiKey: {
@@ -472,7 +477,7 @@ export const ToolConfigModal = ({
             };
           }
 
-          const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/tools/${user.uid}/${selectedToolDetails.id}`, {
+          const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/tools/${user.uid}/${selectedToolId}`, {
             method: 'PATCH',
             headers: {
               'Content-Type': 'application/json',
@@ -815,7 +820,8 @@ export const ToolConfigModal = ({
                       </div>
 
                       <div>
-                        <label className="block text-sm font-lato font-semibold text-gray-900 dark:text-white mb-2">
+                        <label className="block text-sm font-lato font-semibold```python
+ text-gray-900 dark:text-white mb-2">
                           Tool Name
                         </label>
                         <input
