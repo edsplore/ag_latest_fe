@@ -178,6 +178,8 @@ export const ToolConfigModal = ({
   const [loadingToolDetails, setLoadingToolDetails] = useState(false);
   const [error, setError] = useState("");
   const [jsonError, setJsonError] = useState("");
+  const [nameError, setNameError] = useState("");
+  const [urlError, setUrlError] = useState("");
   const [showSampleModal, setShowSampleModal] = useState(false);
 
   const { user } = useAuth();
@@ -283,6 +285,29 @@ export const ToolConfigModal = ({
     }
   }, [toolType, user, toolDetailsCache]);
 
+  const validateToolName = (name: string): string | null => {
+    if (!name.trim()) {
+      return "Tool name is required";
+    }
+    const nameRegex = /^[a-zA-Z0-9_-]{1,64}$/;
+    if (!nameRegex.test(name)) {
+      return "Tool name must be 1-64 characters long and contain only letters, numbers, hyphens, and underscores";
+    }
+    return null;
+  };
+
+  const validateUrl = (url: string): string | null => {
+    if (!url.trim()) {
+      return "Webhook URL is required";
+    }
+    try {
+      new URL(url);
+      return null;
+    } catch {
+      return "Please enter a valid URL";
+    }
+  };
+
   const handleJsonChange = (value: string) => {
     try {
       const parsed = JSON.parse(value);
@@ -302,6 +327,8 @@ export const ToolConfigModal = ({
   const handleClose = () => {
     setError("");
     setJsonError("");
+    setNameError("");
+    setUrlError("");
     if (!editingTool) {
       setToolType("add_new");
       setSelectedBuiltInKey("");
@@ -338,6 +365,8 @@ export const ToolConfigModal = ({
   const handleToolTypeChange = (type: string) => {
     setToolType(type);
     setError("");
+    setNameError("");
+    setUrlError("");
     setSelectedToolDetails(null);
       setSelectedToolId(null);
 
@@ -380,8 +409,15 @@ export const ToolConfigModal = ({
         onSave(toolIds, updatedBuiltInTools);
       } else if (toolType === "add_new") {
         // Create new tool
-        if (!newToolConfig.name.trim()) {
-          setError("Tool name is required");
+        const nameValidation = validateToolName(newToolConfig.name);
+        if (nameValidation) {
+          setNameError(nameValidation);
+          return;
+        }
+
+        const urlValidation = validateUrl(newToolConfig.api_schema?.url || "");
+        if (urlValidation) {
+          setUrlError(urlValidation);
           return;
         }
 
@@ -844,15 +880,30 @@ export const ToolConfigModal = ({
 
                       <div>
                         <label className="block text-sm font-lato font-semibold text-gray-900 dark:text-white mb-2">
-                          Tool Name
+                          Tool Name <span className="text-red-500">*</span>
                         </label>
                         <input
                           type="text"
                           value={newToolConfig.name}
-                          onChange={(e) => setNewToolConfig(prev => ({ ...prev, name: e.target.value }))}
-                          className="input font-lato font-semibold focus:border-primary dark:focus:border-primary-400"
-                          placeholder="Enter tool name"
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            setNewToolConfig(prev => ({ ...prev, name: value }));
+                            setNameError(validateToolName(value) || "");
+                          }}
+                          className={cn(
+                            "input font-lato font-semibold focus:border-primary dark:focus:border-primary-400",
+                            nameError && "border-red-500 dark:border-red-500"
+                          )}
+                          placeholder="Enter tool name (letters, numbers, hyphens, underscores only)"
                         />
+                        {nameError && (
+                          <p className="mt-2 text-sm text-red-600 dark:text-red-400">
+                            {nameError}
+                          </p>
+                        )}
+                        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                          Format: letters, numbers, hyphens, and underscores only (1-64 characters)
+                        </p>
                       </div>
 
                       <div>
@@ -870,18 +921,30 @@ export const ToolConfigModal = ({
 
                       <div>
                         <label className="block text-sm font-lato font-semibold text-gray-900 dark:text-white mb-2">
-                          Webhook URL
+                          Webhook URL <span className="text-red-500">*</span>
                         </label>
                         <input
                           type="url"
                           value={newToolConfig.api_schema?.url || ""}
-                          onChange={(e) => setNewToolConfig(prev => ({
-                            ...prev,
-                            api_schema: { ...prev.api_schema, url: e.target.value }
-                          }))}
-                          className="input font-lato font-semibold focus:border-primary dark:focus:border-primary-400"
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            setNewToolConfig(prev => ({
+                              ...prev,
+                              api_schema: { ...prev.api_schema, url: value }
+                            }));
+                            setUrlError(validateUrl(value) || "");
+                          }}
+                          className={cn(
+                            "input font-lato font-semibold focus:border-primary dark:focus:border-primary-400",
+                            urlError && "border-red-500 dark:border-red-500"
+                          )}
                           placeholder="https://your-webhook-url.com"
                         />
+                        {urlError && (
+                          <p className="mt-2 text-sm text-red-600 dark:text-red-400">
+                            {urlError}
+                          </p>
+                        )}
                       </div>
 
                       <div>
@@ -1270,7 +1333,7 @@ export const ToolConfigModal = ({
                   onClick={handleSaveAndClose}
                   disabled={
                       loadingToolDetails ||
-                      (isNewTool && (!newToolConfig.name.trim() || jsonError)) ||
+                      (isNewTool && (!newToolConfig.name.trim() || jsonError || nameError || urlError)) ||
                       (isBuiltInTool && !builtInToolConfig) ||
                       (isGhlTool && (!ghlConfig.ghlApiKey || !ghlConfig.ghlCalendarId || !ghlConfig.ghlLocationId)) ||
                       (isCalTool && !calConfig.calApiKey)
@@ -1279,7 +1342,7 @@ export const ToolConfigModal = ({
                       "px-4 py-2 text-sm font-lato font-semibold text-white bg-primary rounded-lg",
                       "hover:bg-primary-600 transition-colors",
                       (loadingToolDetails ||
-                       (isNewTool && (!newToolConfig.name.trim() || jsonError)) ||
+                       (isNewTool && (!newToolConfig.name.trim() || jsonError || nameError || urlError)) ||
                        (isBuiltInTool && !builtInToolConfig) ||
                        (isGhlTool && (!ghlConfig.ghlApiKey || !ghlConfig.ghlCalendarId || !ghlConfig.ghlLocationId)) ||
                        (isCalTool && !calConfig.calApiKey)) &&
