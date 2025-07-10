@@ -489,55 +489,43 @@ export const ToolConfigModal = ({
             url: `${import.meta.env.VITE_BACKEND_URL}/calcom/book/`,
             method: 'POST',
             request_body_schema: {
-              type: 'object',
-              properties: {
-                apiKey: {
-                  type: "string",
-                  constant_value: calConfig.calApiKey
-                },
-                startTime: {
-                  type: 'string',
-                  description: 'Event start time in ISO 8601 format with timezone offset (e.g. 2021-06-23T03:30:00+05:30)'
-                },
-                endTime: {
-                  type: 'string',
-                  description: 'Event end time in ISO 8601 format with timezone offset (e.g. 2021-06-23T04:30:00+05:30)'
-                },
-                title: {
-                  type: 'string',
-                  description: 'Title or name of the event/appointment to be created in Cal.com'
-                },
-                timezone: {
-                  type: "string",
-                  description: "Timezone of the event in IANA timezone format (e.g. America/New_York, Europe/London)"
-                },
-                contactInfo: {
-                  type: 'object',
-                  properties: {
-                    phone: {
-                      type: 'string',
-                      description: 'Contact phone number with country code'
-                    },
-                    firstName: {
-                      type: 'string',
-                      description: 'First name of the contact'
-                    },
-                    lastName: {
-                      type: 'string',
-                      description: 'Last name of the contact'
-                    },
-                    email: {
-                      type: 'string',
-                      description: 'Email address of the contact'
-                    }
+                type: 'object',
+                properties: {
+                  apiKey: {
+                    type: "string",
+                    constant_value: editedTool.calApiKey
                   },
-                  required: ['phone'],
-                  description: 'Contact information for Cal.com'
-                }
-              },
-              required: ['startTime', 'endTime', 'title', 'timezone', 'contactInfo']
+                  start: {
+                    type: 'string',
+                    description: 'Event start time in ISO 8601 format with UTC timezone (e.g. 2024-08-13T09:00:00Z)'
+                  },
+                  end: {
+                    type: 'string',
+                    description: 'Event end time in ISO 8601 format with UTC timezone (e.g. 2024-08-13T10:00:00Z)'
+                  },
+                  attendee: {
+                    type: 'object',
+                    properties: {
+                      name: {
+                        type: 'string',
+                        description: 'Full name of the attendee'
+                      },
+                      email: {
+                        type: 'string',
+                        description: 'Valid email address of the attendee'
+                      },
+                      timeZone: {
+                        type: 'string',
+                        description: 'IANA timezone identifier (e.g. America/New_York, Europe/London)'
+                      }
+                    },
+                    required: ['name', 'email', 'timeZone'],
+                    description: 'Attendee information for the booking'
+                  }
+                },
+                required: ['start', 'end', 'attendee']
+              }
             }
-          }
         };
 
         const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/tools/create/`, {
@@ -1075,15 +1063,12 @@ export const ToolConfigModal = ({
                         )}
                         <pre className="text-sm font-mono bg-white dark:bg-dark-200 p-4 rounded-lg border border-gray-200 dark:border-dark-100 overflow-x-auto">
                           {`{
-  "startTime": "2021-06-23T03:30:00+05:30",
-  "endTime": "2021-06-23T04:30:00+05:30", 
-  "title": "Test Event",
-  "timezone": "America/New_York",
-  "contactInfo": {
-    "phone": "+15551234567",
-    "firstName": "John",
-    "lastName": "Doe", 
-    "email": "john.doe@example.com"
+  "start": "2024-08-13T09:00:00Z",
+  "end": "2024-08-13T10:00:00Z",
+  "attendee": {
+    "name": "John Doe",
+    "email": "john.doe@example.com",
+    "timeZone": "America/New_York"
   }
 }`}
                         </pre>
