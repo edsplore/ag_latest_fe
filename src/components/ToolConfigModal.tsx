@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Webhook, Settings, Plus } from "lucide-react";
@@ -131,14 +130,14 @@ export const ToolConfigModal = ({
     }
     return "add_new";
   });
-  
+
   const [selectedBuiltInKey, setSelectedBuiltInKey] = useState(() => {
     if (editingTool?.type === 'built_in') {
       return editingTool.key;
     }
     return "";
   });
-  
+
   const [builtInToolConfig, setBuiltInToolConfig] = useState<BuiltInTool | null>(() => {
     if (editingTool?.type === 'built_in') {
       return builtInTools[editingTool.key] || getBuiltInToolDefaults(editingTool.key);
@@ -180,14 +179,14 @@ export const ToolConfigModal = ({
   useEffect(() => {
     const fetchUserTools = async () => {
       if (!user) return;
-      
+
       try {
         const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/tools/${user.uid}`, {
           headers: {
             Authorization: `Bearer ${await user.getIdToken()}`,
           },
         });
-        
+
         if (response.ok) {
           const data = await response.json();
           setUserTools(data.tool_config || []);
@@ -208,6 +207,16 @@ export const ToolConfigModal = ({
       if (!user || !toolId || toolDetailsCache[toolId]) {
         if (toolDetailsCache[toolId]) {
           setSelectedToolDetails(toolDetailsCache[toolId]);
+          // Check if it's a GHL tool and extract config
+          const cachedTool = toolDetailsCache[toolId];
+          if (cachedTool.name === 'GHL_BOOKING' && cachedTool.api_schema?.request_body_schema?.properties) {
+            const props = cachedTool.api_schema.request_body_schema.properties;
+            setGhlConfig({
+              ghlApiKey: props.apiKey?.constant_value || '',
+              ghlCalendarId: props.calendarId?.constant_value || '',
+              ghlLocationId: props.locationId?.constant_value || ''
+            });
+          }
         }
         return;
       }
@@ -219,11 +228,22 @@ export const ToolConfigModal = ({
             Authorization: `Bearer ${await user.getIdToken()}`,
           },
         });
-        
+
         if (response.ok) {
-          const toolDetails = await response.json();
-          setToolDetailsCache(prev => ({ ...prev, [toolId]: toolDetails.tool_config }));
+          const apiResponse = await response.json();
+          const toolDetails = apiResponse.tool_config;
+          setToolDetailsCache(prev => ({ ...prev, [toolId]: toolDetails }));
           setSelectedToolDetails(toolDetails);
+
+          // Check if it's a GHL tool and extract config
+          if (toolDetails.name === 'GHL_BOOKING' && toolDetails.api_schema?.request_body_schema?.properties) {
+            const props = toolDetails.api_schema.request_body_schema.properties;
+            setGhlConfig({
+              ghlApiKey: props.apiKey?.constant_value || '',
+              ghlCalendarId: props.calendarId?.constant_value || '',
+              ghlLocationId: props.locationId?.constant_value || ''
+            });
+          }
         }
       } catch (error) {
         console.error('Error fetching tool details:', error);
@@ -799,7 +819,7 @@ export const ToolConfigModal = ({
                         <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
                           The following fields are system-defined and cannot be modified:
                         </p>
-                        
+
                         <div className="mb-4">
                           <label className="block text-sm font-lato font-semibold text-gray-900 dark:text-white mb-2">
                             Name
