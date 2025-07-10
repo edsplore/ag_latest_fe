@@ -8,6 +8,7 @@ import Dashboard from './pages/Dashboard';
 import AgentDetails from './pages/dashboard/AgentDetails';
 import KnowledgeBaseDetails from './pages/dashboard/KnowledgeBaseDetails';
 import { Loader } from './components/Loader';
+import PaymentWrapper from './components/Payment';
 
 function App() {
   return (
@@ -44,6 +45,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <Dashboard />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/payment" 
+              element={
+                <ProtectedRoute>
+                  <PaymentWrapper />
                 </ProtectedRoute>
               } 
             />
