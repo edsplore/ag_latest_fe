@@ -14,9 +14,19 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
+import {
+  fetchCustomerInvoices,
+  getCustomerId,
+  setupMonthlyPlanPayment,
+  getSubscriptions,
+  checkPaymentMethodSetup,
+  setupPaymentMethod,
+  createUserInFirebase,
+} from "../lib/customer";
+import { plans } from "../lib/plans";
 
 const stripePromise = loadStripe(
-  import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || "pk_test_your_key_here",
+  import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY
 );
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
@@ -29,15 +39,6 @@ interface UserData {
   updatedAt: Date;
   hasToppedUp?: boolean;
 }
-
-const fadeInUp = {
-  hidden: { opacity: 0, y: 30 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.8, ease: "easeOut" },
-  },
-};
 
 const containerVariants = {
   hidden: { opacity: 0 },
