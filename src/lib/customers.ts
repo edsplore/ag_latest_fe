@@ -91,7 +91,7 @@ export const setupMonthlyPlanPayment = async (
           customerId,
           email: email,
           return_url:
-            window.location.origin + "/billing" + window.location.search,
+            window.location.origin + "/dashboard/billing" + window.location.search,
         }),
       },
     );
@@ -124,7 +124,7 @@ export const setupPaymentMethod = async (
           email: email,
           customerId,
           return_url:
-            window.location.origin + "/billing" + window.location.search,
+            window.location.origin + "/dashboard/billing" + window.location.search,
         }),
       },
     );
