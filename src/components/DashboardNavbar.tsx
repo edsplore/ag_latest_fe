@@ -30,6 +30,7 @@ export const DashboardNavbar = () => {
 
       if (userDoc.exists()) {
         const userData = userDoc.data();
+        console.log(userData.totalBalance)
         setTotalBalance(userData.totalBalance || 0);
         setHasToppedUp(userData.hasToppedUp || false);
       }
