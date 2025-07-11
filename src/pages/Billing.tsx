@@ -76,9 +76,7 @@ const Billing: React.FC = () => {
           
           setPastInvoices(invoices);
           setHasPaymentMethod(paymentMethodStatus?.hasDynamicSetup);
-          
-          console.log('Subscription data:', subscriptionData);
-          
+                    
           if (subscriptionData?.isActive) {
             setCurrentPlan({
               name: subscriptionData.planName || plans[0].name,
