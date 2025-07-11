@@ -14,6 +14,7 @@ import {
   Speech,
   PhoneCall,
   Box,
+  CreditCard,
 } from "lucide-react";
 import { cn } from "../lib/utils";
 import { ThemeToggle } from "./ThemeToggle";
@@ -27,6 +28,7 @@ const adminMenuItems = [
   { icon: Database, label: "Knowledge Base", path: "/dashboard/knowledge" },
   { icon: Webhook, label: "Tools", path: "/dashboard/tools" },
   { icon: PhoneCall, label: "Batch Calling", path: "/dashboard/batch-calling" },
+  { icon: CreditCard, label: "Billing", path: "/billing" },
   { icon: Users, label: "User Management", path: "/dashboard/users" },
 ];
 
@@ -37,6 +39,7 @@ const userMenuItems = [
   { icon: Database, label: "Knowledge Base", path: "/dashboard/knowledge" },
   { icon: Webhook, label: "Tools", path: "/dashboard/tools" },
   { icon: PhoneCall, label: "Batch Calling", path: "/dashboard/batch-calling" },
+  { icon: CreditCard, label: "Billing", path: "/billing" },
 ];
 
 const Sidebar = () => {
