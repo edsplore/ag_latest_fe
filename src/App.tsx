@@ -57,7 +57,6 @@ function App() {
                 </ProtectedRoute>
               } 
             />
-            <Route path="/billing" element={<ProtectedRoute><Billing /></ProtectedRoute>} />
             <Route path="/dashboard/agents/:agentId" element={<ProtectedRoute><AgentDetails /></ProtectedRoute>} />
             <Route path="/dashboard/knowledge/:documentId" element={<ProtectedRoute><KnowledgeBaseDetails /></ProtectedRoute>} />
             <Route 

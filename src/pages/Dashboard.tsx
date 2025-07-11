@@ -24,6 +24,7 @@ import Tools from './dashboard/Tools';
 import ToolDetails from './dashboard/ToolDetails';
 import BatchCalling from './dashboard/BatchCalling';
 import UserManagement from './dashboard/UserManagement';
+import Billing from './Billing';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useState, useEffect } from 'react';
@@ -343,6 +344,7 @@ const Dashboard = () => {
               <Route path="tools" element={<Tools />} />
               <Route path="tools/:toolId" element={<ToolDetails />} />
               <Route path="batch-calling" element={<BatchCalling />} />
+              <Route path="billing" element={<Billing />} />
               {isAdmin() && <Route path="users" element={<UserManagement />} />}
             </Routes>
           </div>

@@ -27,7 +27,7 @@ const adminMenuItems = [
   { icon: Database, label: "Knowledge Base", path: "/dashboard/knowledge" },
   { icon: Webhook, label: "Tools", path: "/dashboard/tools" },
   { icon: PhoneCall, label: "Batch Calling", path: "/dashboard/batch-calling" },
-  { icon: CreditCard, label: "Billing", path: "/billing" },
+  { icon: CreditCard, label: "Billing", path: "/dashboard/billing" },
   { icon: Users, label: "User Management", path: "/dashboard/users" },
 ];
 
@@ -38,7 +38,7 @@ const userMenuItems = [
   { icon: Database, label: "Knowledge Base", path: "/dashboard/knowledge" },
   { icon: Webhook, label: "Tools", path: "/dashboard/tools" },
   { icon: PhoneCall, label: "Batch Calling", path: "/dashboard/batch-calling" },
-  { icon: CreditCard, label: "Billing", path: "/billing" },
+  { icon: CreditCard, label: "Billing", path: "/dashboard/billing" },
 ];
 
 const Sidebar = () => {
@@ -46,7 +46,7 @@ const Sidebar = () => {
   const { logout, isAdmin } = useAuth();
 
   const [isCollapsed, setIsCollapsed] = useState(false);
-  
+
   const menuItems = isAdmin() ? adminMenuItems : userMenuItems;
 
   return (
