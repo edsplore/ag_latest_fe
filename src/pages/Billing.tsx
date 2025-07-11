@@ -77,10 +77,12 @@ const Billing: React.FC = () => {
           setPastInvoices(invoices);
           setHasPaymentMethod(paymentMethodStatus?.hasDynamicSetup);
           
+          console.log('Subscription data:', subscriptionData);
+          
           if (subscriptionData?.active) {
             setCurrentPlan({
-              name: subscriptionData.planName || 'Active Plan',
-              price: `$${subscriptionData.amount || 0}`,
+              name: subscriptionData.planName || plans[0].name,
+              price: subscriptionData.amount ? `$${subscriptionData.amount}` : `$${plans[0].price}`,
               status: "active",
               validUntil: new Date(subscriptionData.currentPeriodEnd * 1000),
             });
