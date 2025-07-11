@@ -40,7 +40,6 @@ export const getCustomerId = async (userId: string): Promise<string | null> => {
     const userDoc = await getDoc(userRef);
 
     if (userDoc.exists() && userDoc.data().stripeCustomerId) {
-    console.log({userId, userCID: userDoc.data().stripeCustomerId})
       return userDoc.data().stripeCustomerId;
     }
 
