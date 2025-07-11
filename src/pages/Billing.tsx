@@ -182,7 +182,7 @@ const Billing: React.FC = () => {
         </div>
         
         {hasPaymentMethod ? (
-          <div className="bg-green-500/10 text-green-600 dark:text-green-400 px-4 py-2 rounded-lg flex items-center space-x-2 text-sm font-medium border border-green-500/20">
+          <div className="bg-primary/10 text-primary px-4 py-2 rounded-lg flex items-center space-x-2 text-sm font-medium border border-primary/20">
             <span>✓ Payment method added</span>
           </div>
         ) : (
@@ -204,42 +204,9 @@ const Billing: React.FC = () => {
       </div>
 
       {/* Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {/* Balance Card */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="lg:col-span-1"
-        >
-          <div className="bg-white dark:bg-dark-200 rounded-xl border border-gray-200 dark:border-dark-100 p-6">
-            <div className="flex items-center space-x-3 mb-4">
-              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center">
-                <DollarSign className="w-5 h-5 text-primary" />
-              </div>
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                Account Balance
-              </h2>
-            </div>
-            <div className="text-center py-6">
-              <p className="text-3xl font-bold text-primary">
-                ${userData?.totalBalance || 0}.00
-              </p>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                Available balance
-              </p>
-            </div>
-            <Link
-              to="/payment"
-              className="w-full bg-primary hover:bg-primary-600 text-white py-2 px-4 rounded-lg font-medium transition-colors flex items-center justify-center"
-            >
-              <DollarSign className="w-4 h-4 mr-2" />
-              Add Funds
-            </Link>
-          </div>
-        </motion.div>
-
+      <div className="w-full">
         {/* Current Plan or Plan Selection */}
-        <div className="lg:col-span-3">
+        <div className="w-full">
           {currentPlan ? (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -254,7 +221,7 @@ const Billing: React.FC = () => {
                     <p className="text-gray-600 dark:text-gray-400">
                       Valid until: {currentPlan.validUntil.toLocaleDateString()}
                     </p>
-                    <p className="text-green-600 dark:text-green-400 mt-2 font-medium">
+                    <p className="text-primary mt-2 font-medium">
                       Status: {currentPlan.status.charAt(0).toUpperCase() + currentPlan.status.slice(1)}
                     </p>
                   </div>
@@ -282,14 +249,14 @@ const Billing: React.FC = () => {
               )}
 
               <div className="w-full mb-6">
-                <div className="p-8 rounded-xl border-2 border-green-500/30 bg-gradient-to-br from-green-500/10 via-green-400/5 to-emerald-500/10 shadow-lg shadow-green-500/20">
+                <div className="p-8 rounded-xl border-2 border-primary/30 bg-gradient-to-br from-primary/10 via-primary/5 to-primary/10 shadow-lg shadow-primary/20">
                   <div className="flex justify-between items-center mb-6">
                     <div>
                       <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">{plans[0].name}</h3>
                       <p className="text-gray-600 dark:text-gray-400">Perfect for growing businesses</p>
                     </div>
                     <div className="text-right">
-                      <div className="text-4xl font-bold text-green-600 dark:text-green-400 flex items-baseline gap-1">
+                      <div className="text-4xl font-bold text-primary flex items-baseline gap-1">
                         ${plans[0].price}
                         <span className="text-lg font-normal text-gray-500 dark:text-gray-400">/month</span>
                       </div>
@@ -297,7 +264,7 @@ const Billing: React.FC = () => {
                     </div>
                   </div>
                   
-                  <div className="border-t border-green-500/20 pt-6">
+                  <div className="border-t border-primary/20 pt-6">
                     <button
                       type="button"
                       onClick={() => {
@@ -305,7 +272,7 @@ const Billing: React.FC = () => {
                         handleMakePayment();
                       }}
                       disabled={isProcessing}
-                      className="w-full bg-green-600 hover:bg-green-700 text-white py-4 px-8 rounded-lg transition-colors font-semibold text-lg disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-green-600/25"
+                      className="w-full bg-primary hover:bg-primary-700 text-white py-4 px-8 rounded-lg transition-colors font-semibold text-lg disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-primary/25"
                     >
                       {isProcessing ? (
                         <div className="flex items-center justify-center space-x-2">
@@ -395,7 +362,7 @@ const Billing: React.FC = () => {
                       <span
                         className={`px-2 py-1 text-xs rounded-full font-medium ${
                           invoice.status === "paid"
-                            ? "bg-green-500/10 text-green-600 dark:text-green-400 border border-green-500/20"
+                            ? "bg-primary/10 text-primary border border-primary/20"
                             : invoice.status === "open"
                               ? "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 border border-yellow-500/20"
                               : "bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20"
