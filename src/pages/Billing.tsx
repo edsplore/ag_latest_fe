@@ -103,11 +103,8 @@ const Billing: React.FC = () => {
   };
 
   const handleMakePayment = async () => {
-    if (!selectedPlan) {
-      setError("Please select a plan to continue");
-      return;
-    }
-
+    const planToUse = selectedPlan || plans[0].productId;
+    
     if (!user || !customerId) {
       setError("Something went wrong. Please try again.");
       return;
@@ -119,7 +116,7 @@ const Billing: React.FC = () => {
     try {
       await setupMonthlyPlanPayment(
         user.uid,
-        selectedPlan,
+        planToUse,
         customerId,
         user.email || "",
       );
@@ -276,7 +273,7 @@ const Billing: React.FC = () => {
               animate={{ opacity: 1, y: 0 }}
               className="bg-white dark:bg-dark-200 rounded-xl border border-gray-200 dark:border-dark-100 p-6"
             >
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">Choose a Plan</h2>
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">Subscribe to Our Plan</h2>
               
               {(error || paymentMethodError) && (
                 <div className="bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 p-3 rounded-lg text-sm mb-6">
@@ -284,48 +281,43 @@ const Billing: React.FC = () => {
                 </div>
               )}
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                {plans.map((plan, idx) => {
-                  const isSelected = selectedPlan === plan.productId;
-                  const isEven = idx % 2 === 0;
-
-                  return (
-                    <div
-                      key={plan.name}
-                      className={`p-6 rounded-xl border cursor-pointer transition-all ${
-                        isSelected 
-                          ? "border-primary shadow-lg shadow-primary/20" 
-                          : "border-gray-200 dark:border-dark-100 hover:border-primary/50"
-                      }`}
-                      style={{
-                        backgroundColor: isEven ? "#155EEF" : "inherit",
-                        opacity: isSelected ? 1 : 0.8,
-                      }}
-                      onClick={() => handlePlanSelect(plan.productId)}
-                    >
-                      <h3 className="text-xl font-bold text-white mb-4">{plan.name}</h3>
-                      <div className="border-b border-white/20 mb-4"></div>
-                      <div className="flex flex-col gap-2">
-                        <p className="text-sm font-semibold text-white/80">Price</p>
-                        <div className="text-3xl font-bold text-white flex items-baseline gap-1">
-                          ${plan.price}
-                          <span className="text-sm font-normal text-white/60">/month</span>
-                        </div>
-                      </div>
+              <div className="w-full mb-6">
+                <div className="p-8 rounded-xl border-2 border-green-500/30 bg-gradient-to-br from-green-500/10 via-green-400/5 to-emerald-500/10 shadow-lg shadow-green-500/20">
+                  <div className="flex justify-between items-center mb-6">
+                    <div>
+                      <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">{plans[0].name}</h3>
+                      <p className="text-gray-600 dark:text-gray-400">Perfect for growing businesses</p>
                     </div>
-                  );
-                })}
-              </div>
-
-              <div className="flex justify-center">
-                <button
-                  type="button"
-                  onClick={handleMakePayment}
-                  disabled={!selectedPlan || isProcessing}
-                  className="bg-primary hover:bg-primary-600 text-white py-3 px-8 rounded-lg transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed min-w-[200px]"
-                >
-                  {isProcessing ? "Processing..." : "Complete Billing"}
-                </button>
+                    <div className="text-right">
+                      <div className="text-4xl font-bold text-green-600 dark:text-green-400 flex items-baseline gap-1">
+                        ${plans[0].price}
+                        <span className="text-lg font-normal text-gray-500 dark:text-gray-400">/month</span>
+                      </div>
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Billed monthly</p>
+                    </div>
+                  </div>
+                  
+                  <div className="border-t border-green-500/20 pt-6">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedPlan(plans[0].productId);
+                        handleMakePayment();
+                      }}
+                      disabled={isProcessing}
+                      className="w-full bg-green-600 hover:bg-green-700 text-white py-4 px-8 rounded-lg transition-colors font-semibold text-lg disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-green-600/25"
+                    >
+                      {isProcessing ? (
+                        <div className="flex items-center justify-center space-x-2">
+                          <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                          <span>Processing...</span>
+                        </div>
+                      ) : (
+                        "Subscribe Now"
+                      )}
+                    </button>
+                  </div>
+                </div>
               </div>
             </motion.div>
           )}
