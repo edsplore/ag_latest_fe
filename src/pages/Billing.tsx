@@ -79,12 +79,12 @@ const Billing: React.FC = () => {
           
           console.log('Subscription data:', subscriptionData);
           
-          if (subscriptionData?.active) {
+          if (subscriptionData?.isActive) {
             setCurrentPlan({
               name: subscriptionData.planName || plans[0].name,
               price: subscriptionData.amount ? `$${subscriptionData.amount}` : `$${plans[0].price}`,
               status: "active",
-              validUntil: new Date(subscriptionData.currentPeriodEnd * 1000),
+              validUntil: subscriptionData.currentPeriodEnd ? new Date(subscriptionData.currentPeriodEnd * 1000) : new Date(),
             });
           }
         }
