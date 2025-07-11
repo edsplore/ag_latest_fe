@@ -30,7 +30,6 @@ export const DashboardNavbar = () => {
 
       if (userDoc.exists()) {
         const userData = userDoc.data();
-        console.log(userData.totalBalance)
         setTotalBalance(userData.totalBalance || 0);
         setHasToppedUp(userData.hasToppedUp || false);
       }
@@ -53,7 +52,7 @@ export const DashboardNavbar = () => {
         <div className="h-full px-4 flex items-center justify-end space-x-4">
           {/* User Impersonation Dropdown */}
           <UserImpersonationDropdown />
-          
+
           {/* Balance Button */}
           <motion.button
             onClick={handleBalanceClick}
@@ -72,7 +71,7 @@ export const DashboardNavbar = () => {
             </div>
             <Wallet className="w-4 h-4 text-primary dark:text-primary-400 group-hover:scale-110 transition-transform" />
           </motion.button>
-          
+
           {/* User Menu */}
           <motion.button
             onClick={() => setIsProfileOpen(true)}
