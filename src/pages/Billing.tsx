@@ -23,8 +23,6 @@ interface UserData {
   createdByAdmin: boolean;
   createdAt: Date;
   updatedAt: Date;
-  hasToppedUp?: boolean;
-  totalBalance?: number;
   stripeCustomerId?: string;
 }
 

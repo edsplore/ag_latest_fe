@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
@@ -9,7 +9,6 @@ import {
   LogOut,
   Webhook,
   PanelLeftClose,
-  PanelLeftOpen,
   PanelRightOpen,
   Speech,
   PhoneCall,

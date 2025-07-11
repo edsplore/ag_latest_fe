@@ -1,4 +1,3 @@
-
 import { doc, setDoc, getDoc } from "firebase/firestore";
 import { db } from "./firebase";
 
@@ -8,7 +7,7 @@ export const createUserInFirebase = async (
   userId: string,
 ): Promise<string | null> => {
   try {
-    const stripeResponse = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/create-customer`, {
+    const stripeResponse = await fetch(`${import.meta.env.VITE_BACKEND_URL}/payment/create-customer`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
@@ -56,7 +55,7 @@ export const getCustomerId = async (userId: string): Promise<string | null> => {
 export const getSubscriptions = async (customerId: string): Promise<any> => {
   try {
     const response = await fetch(
-      `${import.meta.env.VITE_BACKEND_URL}/api/check-active-subscription?customerId=${customerId}`,
+      `${import.meta.env.VITE_BACKEND_URL}/payment/check-active-subscription?customerId=${customerId}`,
       {
         method: "GET",
         headers: { "Content-Type": "application/json" },
@@ -82,7 +81,7 @@ export const setupMonthlyPlanPayment = async (
 ): Promise<string | null> => {
   try {
     const response = await fetch(
-      `${import.meta.env.VITE_BACKEND_URL}/api/create-plan-subscription-session`,
+      `${import.meta.env.VITE_BACKEND_URL}/payment/create-plan-subscription-session`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -116,7 +115,7 @@ export const setupPaymentMethod = async (
 ): Promise<string | null> => {
   try {
     const response = await fetch(
-      `${import.meta.env.VITE_BACKEND_URL}/api/setup-subscription-payment-method`,
+      `${import.meta.env.VITE_BACKEND_URL}/payment/setup-subscription-payment-method`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -146,7 +145,7 @@ export const checkPaymentMethodSetup = async (
 ): Promise<any> => {
   try {
     const response = await fetch(
-      `${import.meta.env.VITE_BACKEND_URL}/api/check-payment-method-setup?customerId=${customerId}`,
+      `${import.meta.env.VITE_BACKEND_URL}/payment/check-payment-method-setup?customerId=${customerId}`,
       {
         method: "GET",
         headers: { "Content-Type": "application/json" },
@@ -191,7 +190,7 @@ export const fetchCustomerInvoices = async (
 ): Promise<any[]> => {
   try {
     const response = await fetch(
-      `${import.meta.env.VITE_BACKEND_URL}/api/invoices/${customerId}`,
+      `${import.meta.env.VITE_BACKEND_URL}/payment/invoices/${customerId}`,
       {
         method: "GET",
         headers: { "Content-Type": "application/json" },
