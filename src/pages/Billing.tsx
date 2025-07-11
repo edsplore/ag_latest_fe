@@ -2,8 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { DollarSign, Download, Plus, History } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Download, Plus, History } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
@@ -272,7 +271,7 @@ const Billing: React.FC = () => {
                         handleMakePayment();
                       }}
                       disabled={isProcessing}
-                      className="w-full bg-primary hover:bg-primary-700 text-white py-4 px-8 rounded-lg transition-colors font-semibold text-lg disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-primary/25"
+                      className="w-full max-w-sm mx-auto block bg-primary hover:bg-primary-700 text-white py-4 px-8 rounded-lg transition-colors font-semibold text-lg disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-primary/25"
                     >
                       {isProcessing ? (
                         <div className="flex items-center justify-center space-x-2">
