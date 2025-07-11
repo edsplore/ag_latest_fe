@@ -49,21 +49,30 @@ const Billing: React.FC = () => {
 
   useEffect(() => {
     const initializeData = async () => {
-      if (!user) return;
+      const effectiveUser = getEffectiveUser();
+      if (!effectiveUser) return;
       
       try {
         // Get user data from Firestore
-        const userDocRef = doc(db, "users", user.uid);
+        const userDocRef = doc(db, "users", effectiveUser.uid);
         const userDoc = await getDoc(userDocRef);
         
         if (userDoc.exists()) {
           setUserData(userDoc.data() as UserData);
         }
 
+        // Reset all state when switching users
+        setUserData(null);
+        setCustomerId("");
+        setPastInvoices([]);
+        setCurrentPlan(null);
+        setHasPaymentMethod(false);
+        setError(null);
+
         // Initialize customer
-        let id = await getCustomerId(user.uid);
+        let id = await getCustomerId(effectiveUser.uid);
         if (!id) {
-          id = await createUserInFirebase(user.email ?? "", user.uid);
+          id = await createUserInFirebase(effectiveUser.email ?? "", effectiveUser.uid);
         }
         
         if (id) {
@@ -94,7 +103,7 @@ const Billing: React.FC = () => {
     };
 
     initializeData();
-  }, [user]);
+  }, [user, getEffectiveUser]);
 
   const handlePlanSelect = (productId: string) => {
     setSelectedPlan(productId);
@@ -103,8 +112,9 @@ const Billing: React.FC = () => {
 
   const handleMakePayment = async () => {
     const planToUse = selectedPlan || plans[0].productId;
+    const effectiveUser = getEffectiveUser();
     
-    if (!user || !customerId) {
+    if (!effectiveUser || !customerId) {
       setError("Something went wrong. Please try again.");
       return;
     }
@@ -114,10 +124,10 @@ const Billing: React.FC = () => {
 
     try {
       await setupMonthlyPlanPayment(
-        user.uid,
+        effectiveUser.uid,
         planToUse,
         customerId,
-        user.email || "",
+        effectiveUser.email || "",
       );
     } catch (error) {
       console.error("Error setting up payment:", error);
@@ -127,7 +137,8 @@ const Billing: React.FC = () => {
   };
 
   const handleSetupPaymentMethod = async () => {
-    if (!user || !user.email) {
+    const effectiveUser = getEffectiveUser();
+    if (!effectiveUser || !effectiveUser.email) {
       console.error("User not found");
       return;
     }
@@ -141,7 +152,7 @@ const Billing: React.FC = () => {
     setPaymentMethodError(null);
 
     try {
-      await setupPaymentMethod(user.uid, user.email, customerId);
+      await setupPaymentMethod(effectiveUser.uid, effectiveUser.email, customerId);
     } catch (error) {
       console.error("Error setting up payment method:", error);
       setPaymentMethodError(
