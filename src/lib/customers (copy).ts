@@ -1,24 +1,22 @@
 import { doc, setDoc, getDoc } from "firebase/firestore";
 import { db } from "./firebase";
+
 // Creating user in Firestore
 export const createUserInFirebase = async (
   email: string,
   userId: string,
 ): Promise<string | null> => {
   try {
-    const stripeResponse = await fetch(
-      `${import.meta.env.VITE_BACKEND_URL}/payment/create-customer`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email: email,
-        }),
+    const stripeResponse = await fetch(`${import.meta.env.VITE_BACKEND_URL}/payment/create-customer`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
       },
-    );
-    if (!stripeResponse.ok) {
+      body: JSON.stringify({
+        email: email,
+      }),
+    });
+    if(!stripeResponse.ok){
       return null;
     }
     const stripeData = await stripeResponse.json();
@@ -92,9 +90,7 @@ export const setupMonthlyPlanPayment = async (
           customerId,
           email: email,
           return_url:
-            window.location.origin +
-            "/dashboard/billing" +
-            window.location.search,
+            window.location.origin + "/dashboard/billing" + window.location.search,
         }),
       },
     );
@@ -127,9 +123,7 @@ export const setupPaymentMethod = async (
           email: email,
           customerId,
           return_url:
-            window.location.origin +
-            "/dashboard/billing" +
-            window.location.search,
+            window.location.origin + "/dashboard/billing" + window.location.search,
         }),
       },
     );
@@ -209,98 +203,5 @@ export const fetchCustomerInvoices = async (
   } catch (error) {
     console.error("Error fetching invoices:", error);
     return [];
-  }
-};
-// Trigger top-up
-export const setupOneTimeTopUp = async (
-  userId: string,
-  amount: number,
-  customerId: string,
-  email: string,
-): Promise<void> => {
-  try {
-    const response = await fetch(
-      `${import.meta.env.VITE_BACKEND_URL}/payment/create-topup-session`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId,
-          amount,
-          customerId,
-          email,
-          return_url: `${window.location.origin}/dashboard/billing${window.location.search}`,
-        }),
-      },
-    );
-
-    if (!response.ok) throw new Error("Failed to create top-up session");
-
-    const data = await response.json();
-    window.location.href = data.sessionUrl;
-  } catch (error) {
-    console.error("Error creating top-up session:", error);
-    throw error;
-  }
-};
-
-export const getUsageDetails = async (
-  userId: string,
-): Promise<{
-  currentBalance: number;
-  totalUsage: number;
-  totalCalls: number;
-  nextInvoiceDate: string;
-}> => {
-  try {
-    const now = new Date();
-    const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-
-    console.log(currentMonthKey);
-
-    const userRef = doc(db, "users", userId);
-    const userSnap = await getDoc(userRef);
-
-    let currentBalance = 0;
-    let totalUsage = 0;
-
-    if (userSnap.exists()) {
-      const userData = userSnap.data();
-      totalUsage = (userData.usage || 0);
-      let balance: number = userData.balance || 0;
-      currentBalance = balance - totalUsage || 0;
-    }
-
-    const invoiceRef = doc(db, "users", userId, "invoices", currentMonthKey);
-    const invoiceSnap = await getDoc(invoiceRef);
-
-    let totalCalls = 0;
-
-    if (invoiceSnap.exists()) {
-      const invoiceData = invoiceSnap.data();
-      totalCalls = invoiceData.total_convs || 0;
-    }
-
-    // Next invoice is due on the 1st of next month
-    const nextInvoiceDate = new Date(now.getFullYear(), now.getMonth() + 1, 1)
-      .toISOString()
-      .split("T")[0];
-
-    console.log(currentBalance, totalUsage, totalCalls, nextInvoiceDate);
-
-    return {
-      currentBalance,
-      totalUsage,
-      totalCalls,
-      nextInvoiceDate,
-    };
-  } catch (error) {
-    console.error("Error fetching usage details:", error);
-    return {
-      currentBalance: 0,
-      totalUsage: 0,
-      totalCalls: 0,
-      nextInvoiceDate: "",
-    };
   }
 };

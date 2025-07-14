@@ -1,5 +1,5 @@
 
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
   Bot, 
@@ -10,7 +10,6 @@ import {
   Activity,
   Users,
   Clock,
-  MessageSquare,
   TrendingUp,
   PhoneCall,
 } from 'lucide-react';
@@ -24,7 +23,7 @@ import Tools from './dashboard/Tools';
 import ToolDetails from './dashboard/ToolDetails';
 import BatchCalling from './dashboard/BatchCalling';
 import UserManagement from './dashboard/UserManagement';
-import Billing from './Billing';
+import Billing from './dashboard/Billing';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useState, useEffect } from 'react';

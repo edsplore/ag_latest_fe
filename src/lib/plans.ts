@@ -1,7 +1,7 @@
 export const plans = [
   {
-    name: "Startup",
-    price: 60,
-    productId: "prod_S0cTylHhuUsSZE",
+    name: "Standard Plan",
+    price: 50,
+    productId: "prod_SeuVoEZ8QmNgAj",
   }
 ];

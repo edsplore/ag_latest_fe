@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { User, LogOut, X, Mail, Wallet, DollarSign } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
@@ -8,14 +8,13 @@ import { db } from '../lib/firebase';
 import UserImpersonationDropdown from './UserImpersonationDropdown';
 
 export const DashboardNavbar = () => {
-  const { user, logout, getEffectiveUser, getEffectiveUserData, isImpersonating } = useAuth();
+  const { user, logout, getEffectiveUser, getEffectiveUserData } = useAuth();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [totalBalance, setTotalBalance] = useState(0);
   const [hasToppedUp, setHasToppedUp] = useState(false);
   const navigate = useNavigate();
 
   const effectiveUser = getEffectiveUser();
-  const effectiveUserData = getEffectiveUserData();
 
   useEffect(() => {
     fetchUserBalance();
@@ -40,7 +39,7 @@ export const DashboardNavbar = () => {
 
   const handleBalanceClick = () => {
     if (hasToppedUp) {
-      navigate('/billing'); // Navigate to billing page if topped up
+      navigate('/dashboard/billing'); // Navigate to billing page if topped up
     } else {
       navigate('/payment'); // Navigate to payment page if not topped up
     }
@@ -54,7 +53,7 @@ export const DashboardNavbar = () => {
           <UserImpersonationDropdown />
 
           {/* Balance Button */}
-          <motion.button
+          {/* <motion.button
             onClick={handleBalanceClick}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
@@ -70,7 +69,7 @@ export const DashboardNavbar = () => {
               </span>
             </div>
             <Wallet className="w-4 h-4 text-primary dark:text-primary-400 group-hover:scale-110 transition-transform" />
-          </motion.button>
+          </motion.button> */}
 
           {/* User Menu */}
           <motion.button

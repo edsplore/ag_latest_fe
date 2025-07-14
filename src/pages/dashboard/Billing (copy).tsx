@@ -1,11 +1,7 @@
-
-
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Download, Plus, History } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
 import { doc, getDoc } from 'firebase/firestore';
-import { db } from '../lib/firebase';
 import {
   fetchCustomerInvoices,
   getCustomerId,
@@ -14,8 +10,11 @@ import {
   checkPaymentMethodSetup,
   setupPaymentMethod,
   createUserInFirebase,
-} from '../lib/customers';
-import { plans } from '../lib/plans';
+} from '../../lib/customers';
+
+import { plans } from '../../lib/plans';
+import { useAuth } from '../../contexts/AuthContext';
+import { db } from '../../lib/firebase';
 
 interface UserData {
   email: string;
@@ -123,7 +122,7 @@ const Billing: React.FC = () => {
     setIsProcessing(true);
 
     try {
-      await setupMonthlyPlanPayment(
+      await setupMonthlyPlanPayw  ment(
         effectiveUser.uid,
         planToUse,
         customerId,
