@@ -58,6 +58,9 @@ const Billing: React.FC = () => {
       const effectiveUser = getEffectiveUser();
       if (!effectiveUser) return;
 
+      // Reset hasToppedUp to false for each effective user by default
+      setHasToppedUp(false);
+
       try {
         const userDocRef = doc(db, "users", effectiveUser.uid);
         const userDoc = await getDoc(userDocRef);
@@ -65,7 +68,8 @@ const Billing: React.FC = () => {
         if (userDoc.exists()) {
           const data = userDoc.data() as UserData;
           setUserData(data);
-          if (data.hasToppedUp) setHasToppedUp(true);
+          // Set hasToppedUp based on the specific effective user's data, defaulting to false
+          setHasToppedUp(data.hasToppedUp || false);
         }
 
         let id = await getCustomerId(effectiveUser.uid);
