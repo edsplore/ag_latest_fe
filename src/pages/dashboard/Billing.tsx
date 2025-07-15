@@ -10,6 +10,7 @@ import {
   createUserInFirebase,
   setupOneTimeTopUp,
   getUsageDetails,
+  getUserInvoices,
 } from "../../lib/customers";
 import { db } from "../../lib/firebase";
 
@@ -35,6 +36,8 @@ const Billing: React.FC = () => {
   const [paymentMethodError, setPaymentMethodError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pastInvoices, setPastInvoices] = useState<any[]>([]);
+  const [paidInvoices, setPaidInvoices] = useState<any[]>([]);
+  const [unpaidInvoices, setUnpaidInvoices] = useState<any[]>([]);
   const [userBalance, setUserBalance] = useState<number>(0);
   const [totalUsage, setTotalUsage] = useState<number>(0);
   const [totalCalls, setTotalCalls] = useState<number>(0);
@@ -80,14 +83,17 @@ const Billing: React.FC = () => {
         if (id) {
           setCustomerId(id);
 
-          const [invoices, paymentMethodStatus, usageDetails] = await Promise.all([
+          const [invoices, paymentMethodStatus, usageDetails, userInvoices] = await Promise.all([
             fetchCustomerInvoices(id),
             checkPaymentMethodSetup(id),
             getUsageDetails(effectiveUser.uid),
+            getUserInvoices(effectiveUser.uid),
           ]);
 
           setHasPaymentMethod(paymentMethodStatus?.hasDynamicSetup || false);
           setPastInvoices(invoices);
+          setPaidInvoices(userInvoices.paidInvoices);
+          setUnpaidInvoices(userInvoices.unpaidInvoices);
           setUserBalance(usageDetails.currentBalance ?? 0);
           setTotalUsage(usageDetails.totalUsage ?? 0);
           setTotalCalls(usageDetails.totalCalls ?? 0);
@@ -186,6 +192,41 @@ const Billing: React.FC = () => {
         </div>
       </div>
 
+      {/* Unpaid Invoices Alert */}
+      {unpaidInvoices.length > 0 && (
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-6">
+          <h2 className="text-lg font-semibold text-red-800 dark:text-red-200 mb-4">
+            ⚠️ Unpaid Invoices
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {unpaidInvoices.map((invoice) => (
+              <div
+                key={invoice.id}
+                className="bg-white dark:bg-dark-200 p-4 rounded-lg border border-red-200 dark:border-red-700"
+              >
+                <div className="flex justify-between items-start mb-2">
+                  <h3 className="font-medium text-gray-900 dark:text-white">
+                    {invoice.id}
+                  </h3>
+                  <span className="text-sm px-2 py-1 bg-red-100 dark:bg-red-800 text-red-800 dark:text-red-200 rounded">
+                    {invoice.invoiceStatus || "Unpaid"}
+                  </span>
+                </div>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
+                  Amount: ${((invoice.total_amount || 0) / 100).toFixed(2)}
+                </p>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
+                  Usage: ${((invoice.total_usage || 0) / 100).toFixed(2)}
+                </p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Calls: {invoice.total_convs || 0}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Balance and Usage Section */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
         {/* Balance */}
@@ -240,41 +281,34 @@ const Billing: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {pastInvoices.length === 0 ? (
+              {paidInvoices.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="text-center py-8 text-gray-500 dark:text-gray-400">
-                    No invoices yet.
+                    No paid invoices yet.
                   </td>
                 </tr>
               ) : (
-                pastInvoices.map((invoice) => (
+                paidInvoices.map((invoice) => (
                   <tr
                     key={invoice.id}
                     className="hover:bg-gray-50 dark:hover:bg-dark-300/50"
                   >
                     <td className="px-6 py-4">
-                      {new Date(invoice.period_end * 1000).toLocaleString("default", {
-                        month: "long",
-                        year: "numeric",
-                      })}
+                      {invoice.id}
                     </td>
-                    <td className="px-6 py-4">${(invoice.amount_paid / 100).toFixed(2)}</td>
+                    <td className="px-6 py-4">${((invoice.total_amount || 0) / 100).toFixed(2)}</td>
                     <td className="px-6 py-4">
-                      {new Date(invoice.created * 1000).toLocaleDateString()}
+                      {invoice.created_at ? new Date(invoice.created_at.seconds * 1000).toLocaleDateString() : 'N/A'}
                     </td>
                     <td className="px-6 py-4 capitalize text-sm font-medium">
-                      {invoice.status}
+                      <span className="text-green-600 dark:text-green-400">
+                        {invoice.invoiceStatus || "Paid"}
+                      </span>
                     </td>
                     <td className="px-6 py-4">
-                      <a
-                        href={invoice.hosted_invoice_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-primary hover:underline text-sm"
-                      >
-                        <Download className="inline-block w-4 h-4 mr-1" />
-                        Download
-                      </a>
+                      <div className="text-sm text-gray-600 dark:text-gray-400">
+                        Usage: ${((invoice.total_usage || 0) / 100).toFixed(2)} | Calls: {invoice.total_convs || 0}
+                      </div>
                     </td>
                   </tr>
                 ))
