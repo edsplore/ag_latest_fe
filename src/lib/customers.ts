@@ -1,4 +1,4 @@
-import { doc, setDoc, getDoc } from "firebase/firestore";
+import { doc, setDoc, getDoc, collection , getDocs } from "firebase/firestore";
 import { db } from "./firebase";
 // Creating user in Firestore
 export const createUserInFirebase = async (
@@ -256,7 +256,7 @@ export const getUsageDetails = async (
     const now = new Date();
     const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 
-    console.log(currentMonthKey);
+    // console.log(currentMonthKey);
 
     const userRef = doc(db, "users", userId);
     const userSnap = await getDoc(userRef);
@@ -266,7 +266,7 @@ export const getUsageDetails = async (
 
     if (userSnap.exists()) {
       const userData = userSnap.data();
-      totalUsage = (userData.usage || 0);
+      totalUsage = userData.usage / 100 || 0;
       let balance: number = userData.balance || 0;
       currentBalance = balance - totalUsage || 0;
     }
@@ -286,7 +286,7 @@ export const getUsageDetails = async (
       .toISOString()
       .split("T")[0];
 
-    console.log(currentBalance, totalUsage, totalCalls, nextInvoiceDate);
+    // console.log(currentBalance, totalUsage, totalCalls, nextInvoiceDate);
 
     return {
       currentBalance,
@@ -302,5 +302,35 @@ export const getUsageDetails = async (
       totalCalls: 0,
       nextInvoiceDate: "",
     };
+  }
+};
+export const getUserInvoices = async (
+  userId: string
+): Promise<{
+  paidInvoices: any[];
+  unpaidInvoices: any[];
+}> => {
+  try {
+    const invoicesRef = collection(db, "users", userId, "invoices");
+    const invoicesSnap = await getDocs(invoicesRef);
+
+    const paidInvoices: any[] = [];
+    const unpaidInvoices: any[] = [];
+
+    invoicesSnap.forEach((doc) => {
+      const data = doc.data();
+      const invoice = { id: doc.id, ...data };
+
+      if (data.invoiceStatus === "paid") {
+        paidInvoices.push(invoice);
+      } else {
+        unpaidInvoices.push(invoice);
+      }
+    });
+
+    return { paidInvoices, unpaidInvoices };
+  } catch (error) {
+    console.error("Error fetching user invoices:", error);
+    return { paidInvoices: [], unpaidInvoices: [] };
   }
 };

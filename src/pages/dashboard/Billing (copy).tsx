@@ -1,20 +1,17 @@
-import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { Download, Plus, History } from 'lucide-react';
-import { doc, getDoc } from 'firebase/firestore';
+import React, { useState, useEffect } from "react";
+import { Download, Plus, History } from "lucide-react";
+import { doc, getDoc } from "firebase/firestore";
+import { useAuth } from "../../contexts/AuthContext";
 import {
-  fetchCustomerInvoices,
   getCustomerId,
-  setupMonthlyPlanPayment,
-  getSubscriptions,
-  checkPaymentMethodSetup,
   setupPaymentMethod,
+  checkPaymentMethodSetup,
+  fetchCustomerInvoices,
   createUserInFirebase,
-} from '../../lib/customers';
-
-import { plans } from '../../lib/plans';
-import { useAuth } from '../../contexts/AuthContext';
-import { db } from '../../lib/firebase';
+  setupOneTimeTopUp,
+  getUsageDetails,
+} from "../../lib/customers";
+import { db } from "../../lib/firebase";
 
 interface UserData {
   email: string;
@@ -23,76 +20,78 @@ interface UserData {
   createdAt: Date;
   updatedAt: Date;
   stripeCustomerId?: string;
+  hasToppedUp?: boolean;
 }
-
-const PaymentMethodButton: React.FC<React.ButtonHTMLAttributes<HTMLButtonElement>> = ({ 
-  children, 
-  ...props 
-}) => <button {...props}>{children}</button>;
 
 const Billing: React.FC = () => {
   const { getEffectiveUser } = useAuth();
   const user = getEffectiveUser();
-  
+
   const [loading, setLoading] = useState(true);
   const [userData, setUserData] = useState<UserData | null>(null);
   const [customerId, setCustomerId] = useState<string>("");
-  const [pastInvoices, setPastInvoices] = useState<any[]>([]);
-  const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
-  const [currentPlan, setCurrentPlan] = useState<any>(null);
   const [hasPaymentMethod, setHasPaymentMethod] = useState(false);
   const [isLoadingPaymentMethod, setIsLoadingPaymentMethod] = useState(false);
   const [paymentMethodError, setPaymentMethodError] = useState<string | null>(null);
-  const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pastInvoices, setPastInvoices] = useState<any[]>([]);
+  const [userBalance, setUserBalance] = useState<number>(0);
+  const [totalUsage, setTotalUsage] = useState<number>(0);
+  const [totalCalls, setTotalCalls] = useState<number>(0);
+  const [nextInvoiceDate, setNextInvoiceDate] = useState<string>("");
+  const [hasToppedUp, setHasToppedUp] = useState<boolean>(false);
+
+  const getCurrentMonthLabel = () => {
+    const now = new Date();
+    return " "+ now.toLocaleString("default", { month: "long", year: "numeric" })+ " ";
+  };
+  const formatDateToDDMMYYYY = (isoDate: string): string => {
+    const date = new Date(isoDate);
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0"); // Months are zero-based
+    const year = date.getFullYear();
+    return `${day}-${month}-${year}`;
+  };
 
   useEffect(() => {
     const initializeData = async () => {
       const effectiveUser = getEffectiveUser();
       if (!effectiveUser) return;
-      
+
+      // Reset hasToppedUp to false for each effective user by default
+      setHasToppedUp(false);
+
       try {
-        // Get user data from Firestore
         const userDocRef = doc(db, "users", effectiveUser.uid);
         const userDoc = await getDoc(userDocRef);
-        
+
         if (userDoc.exists()) {
-          setUserData(userDoc.data() as UserData);
+          const data = userDoc.data() as UserData;
+          setUserData(data);
+          // Set hasToppedUp based on the specific effective user's data, defaulting to false
+          setHasToppedUp(data.hasToppedUp || false);
         }
 
-        // Reset all state when switching users
-        setUserData(null);
-        setCustomerId("");
-        setPastInvoices([]);
-        setCurrentPlan(null);
-        setHasPaymentMethod(false);
-        setError(null);
-
-        // Initialize customer
         let id = await getCustomerId(effectiveUser.uid);
         if (!id) {
           id = await createUserInFirebase(effectiveUser.email ?? "", effectiveUser.uid);
         }
-        
+
         if (id) {
           setCustomerId(id);
-          const [invoices, subscriptionData, paymentMethodStatus] = await Promise.all([
+
+          const [invoices, paymentMethodStatus, usageDetails] = await Promise.all([
             fetchCustomerInvoices(id),
-            getSubscriptions(id),
             checkPaymentMethodSetup(id),
+            getUsageDetails(effectiveUser.uid),
           ]);
-          
+
+          setHasPaymentMethod(paymentMethodStatus?.hasDynamicSetup || false);
           setPastInvoices(invoices);
-          setHasPaymentMethod(paymentMethodStatus?.hasDynamicSetup);
-                    
-          if (subscriptionData?.isActive) {
-            setCurrentPlan({
-              name: subscriptionData.planName || plans[0].name,
-              price: subscriptionData.amount ? `$${subscriptionData.amount}` : `$${plans[0].price}`,
-              status: "active",
-              validUntil: subscriptionData.currentPeriodEnd ? new Date(subscriptionData.currentPeriodEnd * 1000) : new Date(),
-            });
-          }
+          setUserBalance(usageDetails.currentBalance ?? 0);
+          setTotalUsage(usageDetails.totalUsage ?? 0);
+          setTotalCalls(usageDetails.totalCalls ?? 0);
+          setNextInvoiceDate(usageDetails.nextInvoiceDate || "");
         }
       } catch (error) {
         console.error("Error initializing data:", error);
@@ -104,48 +103,9 @@ const Billing: React.FC = () => {
     initializeData();
   }, [user, getEffectiveUser]);
 
-  const handlePlanSelect = (productId: string) => {
-    setSelectedPlan(productId);
-    setError("");
-  };
-
-  const handleMakePayment = async () => {
-    const planToUse = selectedPlan || plans[0].productId;
-    const effectiveUser = getEffectiveUser();
-    
-    if (!effectiveUser || !customerId) {
-      setError("Something went wrong. Please try again.");
-      return;
-    }
-
-    setError("");
-    setIsProcessing(true);
-
-    try {
-      await setupMonthlyPlanPayw  ment(
-        effectiveUser.uid,
-        planToUse,
-        customerId,
-        effectiveUser.email || "",
-      );
-    } catch (error) {
-      console.error("Error setting up payment:", error);
-      setError("Failed to setup payment. Please try again.");
-      setIsProcessing(false);
-    }
-  };
-
   const handleSetupPaymentMethod = async () => {
     const effectiveUser = getEffectiveUser();
-    if (!effectiveUser || !effectiveUser.email) {
-      console.error("User not found");
-      return;
-    }
-
-    if (!customerId) {
-      console.error("Customer ID not found");
-      return;
-    }
+    if (!effectiveUser || !effectiveUser.email || !customerId) return;
 
     setIsLoadingPaymentMethod(true);
     setPaymentMethodError(null);
@@ -153,26 +113,31 @@ const Billing: React.FC = () => {
     try {
       await setupPaymentMethod(effectiveUser.uid, effectiveUser.email, customerId);
     } catch (error) {
-      console.error("Error setting up payment method:", error);
       setPaymentMethodError(
-        error instanceof Error ? error.message : "An unexpected error occurred",
+        error instanceof Error ? error.message : "Something went wrong",
       );
     } finally {
       setIsLoadingPaymentMethod(false);
     }
   };
 
+  const handleTopUp = async () => {
+    const effectiveUser = getEffectiveUser();
+    if (!effectiveUser || !customerId) return;
+
+    try {
+      const amount = 50;
+      await setupOneTimeTopUp(effectiveUser.uid, amount, customerId, effectiveUser.email || "");
+    } catch (err) {
+      console.error("Top-up failed", err);
+      setError("Failed to process top-up. Please try again.");
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="flex items-center space-x-3"
-        >
-          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-          <span className="text-lg font-medium text-gray-700 dark:text-gray-200">Loading billing information...</span>
-        </motion.div>
+        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -182,212 +147,132 @@ const Billing: React.FC = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-            Billing & Usage
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">
-            Manage your subscriptions and view transaction history
-          </p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Billing</h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-1">Manage top-ups and usage</p>
         </div>
-        
-        {hasPaymentMethod ? (
-          <div className="bg-primary/10 text-primary px-4 py-2 rounded-lg flex items-center space-x-2 text-sm font-medium border border-primary/20">
-            <span>✓ Payment method added</span>
-          </div>
-        ) : (
-          <PaymentMethodButton
-            className="bg-primary hover:bg-primary-600 text-white px-4 py-2 rounded-lg transition-colors flex items-center space-x-2 text-sm disabled:opacity-50 font-medium"
-            onClick={!loading ? handleSetupPaymentMethod : undefined}
-            disabled={loading || isLoadingPaymentMethod}
-          >
-            {isLoadingPaymentMethod ? (
-              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4 mt-6 bg-white dark:bg-dark-200 p-6 rounded-xl border border-gray-200 dark:border-dark-100">
+          {!hasToppedUp && (
+            <div>
+              <button
+                onClick={handleTopUp}
+                className="bg-primary hover:bg-primary-700 text-white px-6 py-3 rounded-lg font-semibold text-lg"
+              >
+                Add $50
+              </button>
+              {error && <p className="mt-2 text-red-600 text-sm">{error}</p>}
+            </div>
+          )}
+          <div>
+            {hasPaymentMethod ? (
+              <div className="bg-green-100 text-green-700 px-4 py-2 rounded-lg text-sm font-medium">
+                ✓ Payment method added
+              </div>
             ) : (
-              <>
-                <Plus size={16} />
-                Add Payment Method
-              </>
+              <button
+                onClick={handleSetupPaymentMethod}
+                disabled={isLoadingPaymentMethod}
+                className="bg-primary hover:bg-primary-600 text-white px-4 py-2 rounded-lg font-medium"
+              >
+                {isLoadingPaymentMethod ? (
+                  "Loading..."
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <Plus size={16} /> Add Payment Method
+                  </div>
+                )}
+              </button>
             )}
-          </PaymentMethodButton>
-        )}
+          </div>
+        </div>
       </div>
 
-      {/* Content Grid */}
-      <div className="w-full">
-        {/* Current Plan or Plan Selection */}
-        <div className="w-full">
-          {currentPlan ? (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="bg-white dark:bg-dark-200 rounded-xl border border-gray-200 dark:border-dark-100 p-6"
-            >
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Current Plan</h2>
-              <div className="p-6 rounded-lg border border-primary/20 bg-primary/5">
-                <div className="flex justify-between items-center">
-                  <div>
-                    <h3 className="text-xl font-medium text-gray-900 dark:text-white">{currentPlan.name}</h3>
-                    <p className="text-gray-600 dark:text-gray-400">
-                      Valid until: {currentPlan.validUntil.toLocaleDateString()}
-                    </p>
-                    <p className="text-primary mt-2 font-medium">
-                      Status: {currentPlan.status.charAt(0).toUpperCase() + currentPlan.status.slice(1)}
-                    </p>
-                  </div>
-                  <div className="text-3xl font-bold text-primary">
-                    {currentPlan.price}
-                    <span className="text-sm font-normal text-gray-500 dark:text-gray-400">
-                      /month
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          ) : (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="bg-white dark:bg-dark-200 rounded-xl border border-gray-200 dark:border-dark-100 p-6"
-            >
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">Subscribe to Our Plan</h2>
-              
-              {(error || paymentMethodError) && (
-                <div className="bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 p-3 rounded-lg text-sm mb-6">
-                  {error || paymentMethodError}
-                </div>
-              )}
+      {/* Balance and Usage Section */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+        {/* Balance */}
+        <div className="bg-white dark:bg-dark-200 p-6 rounded-xl border border-gray-200 dark:border-dark-100">
+          <h2 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">Current Balance</h2>
+          <div className="flex items-center justify-between">
+            <div className="flex-1 text-center">
+              <p className="text-sm text-gray-500 mb-1">Balance</p>
+              <p className="text-2xl font-semibold text-primary">${userBalance.toFixed(2)}</p>
+            </div>
+            <div className="h-12 border-l border-gray-300 dark:border-gray-600 mx-6"></div>
+            <div className="flex-1 text-center">
+              <p className="text-sm text-gray-500 mb-1">Next Invoice</p>
+              <p className="text-2xl font-semibold text-gray-800 dark:text-white">
+                {nextInvoiceDate ? formatDateToDDMMYYYY(nextInvoiceDate) : getCurrentMonthLabel()}
+              </p>
+            </div>
+          </div>
+        </div>
 
-              <div className="w-full mb-6">
-                <div className="p-8 rounded-xl border-2 border-primary/30 bg-gradient-to-br from-primary/10 via-primary/5 to-primary/10 shadow-lg shadow-primary/20">
-                  <div className="flex justify-between items-center mb-6">
-                    <div>
-                      <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">{plans[0].name}</h3>
-                      <p className="text-gray-600 dark:text-gray-400">Perfect for growing businesses</p>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-4xl font-bold text-primary flex items-baseline gap-1">
-                        ${plans[0].price}
-                        <span className="text-lg font-normal text-gray-500 dark:text-gray-400">/month</span>
-                      </div>
-                      <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Billed monthly</p>
-                    </div>
-                  </div>
-                  
-                  <div className="border-t border-primary/20 pt-6">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSelectedPlan(plans[0].productId);
-                        handleMakePayment();
-                      }}
-                      disabled={isProcessing}
-                      className="w-full max-w-sm mx-auto block bg-primary hover:bg-primary-700 text-white py-4 px-8 rounded-lg transition-colors font-semibold text-lg disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-primary/25"
-                    >
-                      {isProcessing ? (
-                        <div className="flex items-center justify-center space-x-2">
-                          <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                          <span>Processing...</span>
-                        </div>
-                      ) : (
-                        "Subscribe Now"
-                      )}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          )}
+        {/* Usage + Calls */}
+        <div className="bg-white dark:bg-dark-200 p-6 rounded-xl border border-gray-200 dark:border-dark-100">
+          <h2 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">Usage Summary ({getCurrentMonthLabel()}) </h2>
+          <div className="flex items-center justify-between">
+            <div className="flex-1 text-center">
+              <p className="text-sm text-gray-500 mb-1">Total Usage</p>
+              <p className="text-2xl font-semibold text-primary">${totalUsage.toFixed(2)}</p>
+            </div>
+            <div className="h-12 border-l border-gray-300 dark:border-gray-600 mx-6"></div>
+            <div className="flex-1 text-center">
+              <p className="text-sm text-gray-500 mb-1">Total Calls</p>
+              <p className="text-2xl font-semibold text-gray-800 dark:text-white">{totalCalls}</p>
+            </div>
+          </div>
         </div>
       </div>
 
       {/* Invoice History */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
-        className="bg-white dark:bg-dark-200 rounded-xl border border-gray-200 dark:border-dark-100 overflow-hidden"
-      >
-        <div className="px-6 py-4 border-b border-gray-200 dark:border-dark-100">
-          <div className="flex items-center space-x-3">
-            <History className="w-5 h-5 text-primary" />
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-              Invoice History
-            </h2>
-          </div>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full">
+      <div className="mt-8">
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+          <History size={18} /> Invoice History
+        </h2>
+        <div className="overflow-x-auto bg-white dark:bg-dark-200 rounded-lg border border-gray-200 dark:border-dark-100">
+          <table className="min-w-full">
             <thead className="bg-gray-50 dark:bg-dark-300">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Invoice
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Amount
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Date
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Action
-                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium">Month</th>
+                <th className="px-6 py-3 text-left text-xs font-medium">Amount</th>
+                <th className="px-6 py-3 text-left text-xs font-medium">Date</th>
+                <th className="px-6 py-3 text-left text-xs font-medium">Status</th>
+                <th className="px-6 py-3 text-left text-xs font-medium">Action</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200 dark:divide-dark-100">
+            <tbody>
               {pastInvoices.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-8 text-center">
-                    <div className="flex flex-col items-center">
-                      <History className="w-12 h-12 text-gray-400 mb-4" />
-                      <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-                        No invoices yet
-                      </h3>
-                      <p className="text-gray-500 dark:text-gray-400">
-                        Your invoice history will appear here once you start using the service.
-                      </p>
-                    </div>
+                  <td colSpan={5} className="text-center py-8 text-gray-500 dark:text-gray-400">
+                    No invoices yet.
                   </td>
                 </tr>
               ) : (
                 pastInvoices.map((invoice) => (
-                  <tr key={invoice.id} className="hover:bg-gray-50 dark:hover:bg-dark-300/50">
-                    <td className="px-6 py-4 whitespace-nowrap text-gray-900 dark:text-white">
-                      {new Date(invoice.period_end * 1000).toLocaleString(
-                        "default",
-                        { month: "long", year: "numeric" },
-                      )}
+                  <tr
+                    key={invoice.id}
+                    className="hover:bg-gray-50 dark:hover:bg-dark-300/50"
+                  >
+                    <td className="px-6 py-4">
+                      {new Date(invoice.period_end * 1000).toLocaleString("default", {
+                        month: "long",
+                        year: "numeric",
+                      })}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-gray-900 dark:text-white font-medium">
-                      ${(invoice.amount_paid / 100).toFixed(2)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-gray-500 dark:text-gray-400">
+                    <td className="px-6 py-4">${(invoice.amount_paid / 100).toFixed(2)}</td>
+                    <td className="px-6 py-4">
                       {new Date(invoice.created * 1000).toLocaleDateString()}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span
-                        className={`px-2 py-1 text-xs rounded-full font-medium ${
-                          invoice.status === "paid"
-                            ? "bg-primary/10 text-primary border border-primary/20"
-                            : invoice.status === "open"
-                              ? "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 border border-yellow-500/20"
-                              : "bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20"
-                        }`}
-                      >
-                        {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
-                      </span>
+                    <td className="px-6 py-4 capitalize text-sm font-medium">
+                      {invoice.status}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-6 py-4">
                       <a
                         href={invoice.hosted_invoice_url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-primary hover:text-primary-600 dark:hover:text-primary-400 flex items-center text-sm font-medium transition-colors"
+                        className="text-primary hover:underline text-sm"
                       >
-                        <Download className="h-4 w-4 mr-1" />
+                        <Download className="inline-block w-4 h-4 mr-1" />
                         Download
                       </a>
                     </td>
@@ -397,10 +282,9 @@ const Billing: React.FC = () => {
             </tbody>
           </table>
         </div>
-      </motion.div>
+      </div>
     </div>
   );
 };
 
 export default Billing;
-
