@@ -39,6 +39,7 @@ const userMenuItems = [
   { icon: Webhook, label: "Tools", path: "/dashboard/tools" },
   { icon: PhoneCall, label: "Batch Calling", path: "/dashboard/batch-calling" },
   { icon: CreditCard, label: "Billing", path: "/dashboard/billing" },
+  { icon: Users, label: "User Management", path: "/dashboard/users" }, //Added for all users
 ];
 
 const Sidebar = () => {
