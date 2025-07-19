@@ -1,25 +1,39 @@
+
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Users, Search, UserCheck, UserX, Crown, User, Plus, Eye, EyeOff, RefreshCw, X } from 'lucide-react';
+import { Users, Search, UserCheck, UserX, Crown, User, Plus, Eye, EyeOff, RefreshCw, X, Send, Check, Clock, MessageSquare } from 'lucide-react';
 import { db, auth } from '../../lib/firebase';
-import { collection, getDocs, doc, updateDoc, setDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, updateDoc, setDoc, getDoc } from 'firebase/firestore';
 import { createUserWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
 import { useAuth } from '../../contexts/AuthContext';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signOut } from "firebase/auth";
 import { getFirestore } from 'firebase/firestore';
 
-interface User {
+interface UserType {
   id: string;
+  name: string;
   email: string;
   role: 'admin' | 'user';
   createdByAdmin: boolean;
   createdAt: Date;
   updatedAt: Date;
+  sentRequests?: {
+    [targetUserId: string]: {
+      status: "pending" | "accepted" | "rejected";
+      email: string;
+    };
+  };
+  receivedRequests?: {
+    [requestingUserId: string]: {
+      status: "pending" | "accepted" | "rejected";
+      email: string;
+    };
+  };
 }
 
 const UserManagement = () => {
-  const [users, setUsers] = useState<User[]>([]);
+  const [users, setUsers] = useState<UserType[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [updating, setUpdating] = useState<string | null>(null);
@@ -33,7 +47,9 @@ const UserManagement = () => {
   });
   const [addingUser, setAddingUser] = useState(false);
   const [resettingPassword, setResettingPassword] = useState<string | null>(null);
-  const { user } = useAuth();
+  const [sendingRequest, setSendingRequest] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'users' | 'requests'>('users');
+  const { user, userData } = useAuth();
 
   useEffect(() => {
     fetchUsers();
@@ -52,13 +68,16 @@ const UserManagement = () => {
 
         return {
           id: doc.id,
+          name: data.name || data.email?.split('@')[0] || 'Unknown',
           email: data.email || 'No email',
           role: data.role || 'user',
           createdByAdmin: data.createdByAdmin || false,
           createdAt: data.createdAt?.toDate() || new Date(),
           updatedAt: data.updatedAt?.toDate() || new Date(),
+          sentRequests: data.sentRequests || {},
+          receivedRequests: data.receivedRequests || {},
         };
-      }) as User[];
+      }) as UserType[];
 
       console.log('Processed users:', usersData);
       setUsers(usersData);
@@ -107,7 +126,152 @@ const UserManagement = () => {
     }
   };
 
-  
+  const sendImpersonationRequest = async (targetUserId: string, targetEmail: string) => {
+    if (!user || !userData) return;
+
+    setSendingRequest(targetUserId);
+    try {
+      // Update current user's sentRequests
+      const currentUserRef = doc(db, 'users', user.uid);
+      const newSentRequests = {
+        ...userData.sentRequests,
+        [targetUserId]: {
+          status: 'pending' as const,
+          email: targetEmail
+        }
+      };
+
+      await updateDoc(currentUserRef, {
+        sentRequests: newSentRequests,
+        updatedAt: new Date()
+      });
+
+      // Update target user's receivedRequests
+      const targetUserRef = doc(db, 'users', targetUserId);
+      const targetUserDoc = await getDoc(targetUserRef);
+      
+      if (targetUserDoc.exists()) {
+        const targetUserData = targetUserDoc.data();
+        const newReceivedRequests = {
+          ...targetUserData.receivedRequests,
+          [user.uid]: {
+            status: 'pending' as const,
+            email: userData.email
+          }
+        };
+
+        await updateDoc(targetUserRef, {
+          receivedRequests: newReceivedRequests,
+          updatedAt: new Date()
+        });
+      }
+
+      // Update local state
+      setUsers(prev => prev.map(u => {
+        if (u.id === user.uid) {
+          return {
+            ...u,
+            sentRequests: newSentRequests
+          };
+        }
+        if (u.id === targetUserId) {
+          return {
+            ...u,
+            receivedRequests: {
+              ...u.receivedRequests,
+              [user.uid]: {
+                status: 'pending' as const,
+                email: userData.email
+              }
+            }
+          };
+        }
+        return u;
+      }));
+
+      alert('Request sent successfully!');
+    } catch (error) {
+      console.error('Error sending request:', error);
+      alert('Error sending request: ' + error);
+    } finally {
+      setSendingRequest(null);
+    }
+  };
+
+  const respondToRequest = async (requestingUserId: string, response: 'accepted' | 'rejected') => {
+    if (!user || !userData) return;
+
+    setUpdating(requestingUserId);
+    try {
+      const requestingUser = users.find(u => u.id === requestingUserId);
+      if (!requestingUser) return;
+
+      // Update current user's receivedRequests
+      const currentUserRef = doc(db, 'users', user.uid);
+      const newReceivedRequests = {
+        ...userData.receivedRequests,
+        [requestingUserId]: {
+          status: response,
+          email: requestingUser.email
+        }
+      };
+
+      await updateDoc(currentUserRef, {
+        receivedRequests: newReceivedRequests,
+        updatedAt: new Date()
+      });
+
+      // Update requesting user's sentRequests
+      const requestingUserRef = doc(db, 'users', requestingUserId);
+      const requestingUserDoc = await getDoc(requestingUserRef);
+      
+      if (requestingUserDoc.exists()) {
+        const requestingUserData = requestingUserDoc.data();
+        const newSentRequests = {
+          ...requestingUserData.sentRequests,
+          [user.uid]: {
+            status: response,
+            email: userData.email
+          }
+        };
+
+        await updateDoc(requestingUserRef, {
+          sentRequests: newSentRequests,
+          updatedAt: new Date()
+        });
+      }
+
+      // Update local state
+      setUsers(prev => prev.map(u => {
+        if (u.id === user.uid) {
+          return {
+            ...u,
+            receivedRequests: newReceivedRequests
+          };
+        }
+        if (u.id === requestingUserId) {
+          return {
+            ...u,
+            sentRequests: {
+              ...u.sentRequests,
+              [user.uid]: {
+                status: response,
+                email: userData.email
+              }
+            }
+          };
+        }
+        return u;
+      }));
+
+      alert(`Request ${response} successfully!`);
+    } catch (error) {
+      console.error('Error responding to request:', error);
+      alert('Error responding to request: ' + error);
+    } finally {
+      setUpdating(null);
+    }
+  };
 
   const generateRandomPassword = () => {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
@@ -147,11 +311,14 @@ const UserManagement = () => {
 
       // Create user document in Firestore
       const userData = {
+        name: newUser.email!.split('@')[0],
         email: newUser.email!,
         role: addUserForm.role,
         createdByAdmin: true,
         createdAt: new Date(),
-        updatedAt: new Date()
+        updatedAt: new Date(),
+        sentRequests: {},
+        receivedRequests: {}
       };
 
       await setDoc(doc(db, 'users', newUser.uid), userData);
@@ -217,10 +384,25 @@ const UserManagement = () => {
     }));
   };
 
-  const filteredUsers = users.filter(user => {
-    const email = user?.email || '';
-    return email.toLowerCase().includes(searchTerm.toLowerCase());
+  const getRequestStatus = (targetUserId: string) => {
+    return userData?.sentRequests?.[targetUserId]?.status;
+  };
+
+  const canSendRequest = (targetUserId: string) => {
+    if (!user || targetUserId === user.uid) return false;
+    const status = getRequestStatus(targetUserId);
+    return !status; // Can send if no existing request
+  };
+
+  const filteredUsers = users.filter(userItem => {
+    const email = userItem?.email || '';
+    const name = userItem?.name || '';
+    return email.toLowerCase().includes(searchTerm.toLowerCase()) || 
+           name.toLowerCase().includes(searchTerm.toLowerCase());
   });
+
+  const receivedRequests = userData?.receivedRequests || {};
+  const sentRequests = userData?.sentRequests || {};
 
   if (loading) {
     return (
@@ -238,159 +420,322 @@ const UserManagement = () => {
             User Management
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            Manage user roles and permissions ({users.length} total users)
+            Manage users and workspace access requests ({users.length} total users)
           </p>
         </div>
-        {/* <button
-          onClick={() => setShowAddUserModal(true)}
-          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-primary hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Add User
-        </button> */}
       </div>
 
-      {/* Search and Stats */}
-      <div className="bg-white dark:bg-dark-200 rounded-xl shadow-sm border border-gray-100 dark:border-dark-100 p-6 mb-6">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div className="relative flex-1 max-w-md">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Search className="h-4 w-4 text-gray-400" />
-            </div>
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="block w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-dark-100 rounded-lg leading-5 bg-white dark:bg-dark-100 text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
-              placeholder="Search users..."
-            />
-          </div>
-
-          <div className="flex items-center space-x-6 text-sm">
+      {/* Tabs */}
+      <div className="bg-white dark:bg-dark-200 rounded-xl shadow-sm border border-gray-100 dark:border-dark-100 mb-6">
+        <div className="flex border-b border-gray-200 dark:border-dark-100">
+          <button
+            onClick={() => setActiveTab('users')}
+            className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === 'users'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+            }`}
+          >
             <div className="flex items-center space-x-2">
-              <Crown className="w-4 h-4 text-amber-500" />
-              <span className="text-gray-500 dark:text-gray-400">
-                {users.filter(u => u.role === 'admin').length} Admins
-              </span>
+              <Users className="w-4 h-4" />
+              <span>All Users</span>
             </div>
+          </button>
+          <button
+            onClick={() => setActiveTab('requests')}
+            className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === 'requests'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+            }`}
+          >
             <div className="flex items-center space-x-2">
-              <User className="w-4 h-4 text-blue-500" />
-              <span className="text-gray-500 dark:text-gray-400">
-                {users.filter(u => u.role === 'user').length} Users
-              </span>
+              <MessageSquare className="w-4 h-4" />
+              <span>Requests</span>
             </div>
-          </div>
+          </button>
         </div>
       </div>
 
-      {/* Users List */}
-      <div className="bg-white dark:bg-dark-200 rounded-xl shadow-sm border border-gray-100 dark:border-dark-100 overflow-hidden">
-        <div className="divide-y divide-gray-200 dark:divide-dark-100">
-          {filteredUsers.map((user, index) => (
-            <motion.div
-              key={user.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.05 }}
-              className="p-6 hover:bg-gray-50 dark:hover:bg-dark-100 transition-colors"
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-4">
-                  <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
-                    user.role === 'admin' 
-                      ? 'bg-amber-100 dark:bg-amber-900/20' 
-                      : 'bg-blue-100 dark:bg-blue-900/20'
-                  }`}>
-                    {user.role === 'admin' ? (
-                      <Crown className="w-6 h-6 text-amber-600 dark:text-amber-400" />
-                    ) : (
-                      <User className="w-6 h-6 text-blue-600 dark:text-blue-400" />
-                    )}
-                  </div>
-
-                  <div>
-                    <div className="flex items-center space-x-3">
-                      <h3 className="text-lg font-medium text-gray-900 dark:text-white">
-                        {user.email}
-                      </h3>
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        user.role === 'admin'
-                          ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/20 dark:text-amber-400'
-                          : 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400'
-                      }`}>
-                        {user.role}
-                      </span>
-                    </div>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                      Joined {user.createdAt.toLocaleDateString()}
-                    </p>
-                  </div>
+      {activeTab === 'users' && (
+        <>
+          {/* Search and Stats */}
+          <div className="bg-white dark:bg-dark-200 rounded-xl shadow-sm border border-gray-100 dark:border-dark-100 p-6 mb-6">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div className="relative flex-1 max-w-md">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Search className="h-4 w-4 text-gray-400" />
                 </div>
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="block w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-dark-100 rounded-lg leading-5 bg-white dark:bg-dark-100 text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
+                  placeholder="Search users..."
+                />
+              </div>
 
+              <div className="flex items-center space-x-6 text-sm">
                 <div className="flex items-center space-x-2">
-                  {/* Credentials Section */}
-                  {tempPasswords[user.id] && (
-                    <div className="flex items-center space-x-2 bg-yellow-50 dark:bg-yellow-900/20 px-3 py-2 rounded-lg border border-yellow-200 dark:border-yellow-800">
-                      <span className="text-sm text-yellow-800 dark:text-yellow-200">
-                        Password: {showCredentials[user.id] ? tempPasswords[user.id] : '••••••••'}
-                      </span>
-                      <button
-                        onClick={() => toggleCredentialsVisibility(user.id)}
-                        className="text-yellow-600 hover:text-yellow-800 dark:text-yellow-400 dark:hover:text-yellow-200"
-                      >
-                        {showCredentials[user.id] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      </button>
-                    </div>
-                  )}
-
-                  {/* Reset Password Button */}
-                  <button
-                    onClick={() => handleResetPassword(user.email, user.id)}
-                    disabled={resettingPassword === user.id}
-                    className="inline-flex items-center px-3 py-2 border border-gray-300 dark:border-dark-100 text-sm leading-4 font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-dark-100 hover:bg-gray-50 dark:hover:bg-dark-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <RefreshCw className={`w-4 h-4 mr-1 ${resettingPassword === user.id ? 'animate-spin' : ''}`} />
-                    {resettingPassword === user.id ? 'Sending...' : 'Reset Password'}
-                  </button>
-
-                  {/* Role Management */}
-                  {user.role === 'user' ? (
-                    <button
-                      onClick={() => updateUserRole(user.id, 'admin')}
-                      disabled={updating === user.id}
-                      className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-amber-600 hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <UserCheck className="w-4 h-4 mr-1" />
-                      {updating === user.id ? 'Updating...' : 'Make Admin'}
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => updateUserRole(user.id, 'user')}
-                      disabled={updating === user.id}
-                      className="inline-flex items-center px-3 py-2 border border-gray-300 dark:border-dark-100 text-sm leading-4 font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-dark-100 hover:bg-gray-50 dark:hover:bg-dark-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <UserX className="w-4 h-4 mr-1" />
-                      {updating === user.id ? 'Updating...' : 'Remove Admin'}
-                    </button>
-                  )}
+                  <Crown className="w-4 h-4 text-amber-500" />
+                  <span className="text-gray-500 dark:text-gray-400">
+                    {users.filter(u => u.role === 'admin').length} Admins
+                  </span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <User className="w-4 h-4 text-blue-500" />
+                  <span className="text-gray-500 dark:text-gray-400">
+                    {users.filter(u => u.role === 'user').length} Users
+                  </span>
                 </div>
               </div>
-            </motion.div>
-          ))}
-        </div>
-
-        {filteredUsers.length === 0 && (
-          <div className="text-center py-12">
-            <Users className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" />
-            <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">
-              No users found
-            </h3>
-            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              {searchTerm ? 'Try adjusting your search term.' : 'No users have been registered yet.'}
-            </p>
+            </div>
           </div>
-        )}
-      </div>
+
+          {/* Users List */}
+          <div className="bg-white dark:bg-dark-200 rounded-xl shadow-sm border border-gray-100 dark:border-dark-100 overflow-hidden">
+            <div className="divide-y divide-gray-200 dark:divide-dark-100">
+              {filteredUsers.map((userItem, index) => (
+                <motion.div
+                  key={userItem.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.05 }}
+                  className="p-6 hover:bg-gray-50 dark:hover:bg-dark-100 transition-colors"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-4">
+                      <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
+                        userItem.role === 'admin' 
+                          ? 'bg-amber-100 dark:bg-amber-900/20' 
+                          : 'bg-blue-100 dark:bg-blue-900/20'
+                      }`}>
+                        {userItem.role === 'admin' ? (
+                          <Crown className="w-6 h-6 text-amber-600 dark:text-amber-400" />
+                        ) : (
+                          <User className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                        )}
+                      </div>
+
+                      <div>
+                        <div className="flex items-center space-x-3">
+                          <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+                            {userItem.name}
+                          </h3>
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            userItem.role === 'admin'
+                              ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/20 dark:text-amber-400'
+                              : 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400'
+                          }`}>
+                            {userItem.role}
+                          </span>
+                        </div>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                          {userItem.email}
+                        </p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                          Joined {userItem.createdAt.toLocaleDateString()}
+                        </p>
+                        {/* Request Status */}
+                        {user && userItem.id !== user.uid && (
+                          <div className="mt-1">
+                            {getRequestStatus(userItem.id) === 'pending' && (
+                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400">
+                                <Clock className="w-3 h-3 mr-1" />
+                                Request Pending
+                              </span>
+                            )}
+                            {getRequestStatus(userItem.id) === 'accepted' && (
+                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400">
+                                <Check className="w-3 h-3 mr-1" />
+                                Access Granted
+                              </span>
+                            )}
+                            {getRequestStatus(userItem.id) === 'rejected' && (
+                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400">
+                                <X className="w-3 h-3 mr-1" />
+                                Request Rejected
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center space-x-2">
+                      {/* Credentials Section */}
+                      {tempPasswords[userItem.id] && (
+                        <div className="flex items-center space-x-2 bg-yellow-50 dark:bg-yellow-900/20 px-3 py-2 rounded-lg border border-yellow-200 dark:border-yellow-800">
+                          <span className="text-sm text-yellow-800 dark:text-yellow-200">
+                            Password: {showCredentials[userItem.id] ? tempPasswords[userItem.id] : '••••••••'}
+                          </span>
+                          <button
+                            onClick={() => toggleCredentialsVisibility(userItem.id)}
+                            className="text-yellow-600 hover:text-yellow-800 dark:text-yellow-400 dark:hover:text-yellow-200"
+                          >
+                            {showCredentials[userItem.id] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Send Request Button */}
+                      {user && canSendRequest(userItem.id) && (
+                        <button
+                          onClick={() => sendImpersonationRequest(userItem.id, userItem.email)}
+                          disabled={sendingRequest === userItem.id}
+                          className="inline-flex items-center px-3 py-2 border border-primary text-sm leading-4 font-medium rounded-md text-primary bg-white dark:bg-dark-100 hover:bg-primary hover:text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <Send className="w-4 h-4 mr-1" />
+                          {sendingRequest === userItem.id ? 'Sending...' : 'Send Request'}
+                        </button>
+                      )}
+
+                      {/* Reset Password Button */}
+                      <button
+                        onClick={() => handleResetPassword(userItem.email, userItem.id)}
+                        disabled={resettingPassword === userItem.id}
+                        className="inline-flex items-center px-3 py-2 border border-gray-300 dark:border-dark-100 text-sm leading-4 font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-dark-100 hover:bg-gray-50 dark:hover:bg-dark-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <RefreshCw className={`w-4 h-4 mr-1 ${resettingPassword === userItem.id ? 'animate-spin' : ''}`} />
+                        {resettingPassword === userItem.id ? 'Sending...' : 'Reset Password'}
+                      </button>
+
+                      {/* Role Management - Only for admins */}
+                      {userData?.role === 'admin' && (
+                        <>
+                          {userItem.role === 'user' ? (
+                            <button
+                              onClick={() => updateUserRole(userItem.id, 'admin')}
+                              disabled={updating === userItem.id}
+                              className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-amber-600 hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              <UserCheck className="w-4 h-4 mr-1" />
+                              {updating === userItem.id ? 'Updating...' : 'Make Admin'}
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => updateUserRole(userItem.id, 'user')}
+                              disabled={updating === userItem.id}
+                              className="inline-flex items-center px-3 py-2 border border-gray-300 dark:border-dark-100 text-sm leading-4 font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-dark-100 hover:bg-gray-50 dark:hover:bg-dark-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              <UserX className="w-4 h-4 mr-1" />
+                              {updating === userItem.id ? 'Updating...' : 'Remove Admin'}
+                            </button>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+
+            {filteredUsers.length === 0 && (
+              <div className="text-center py-12">
+                <Users className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" />
+                <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">
+                  No users found
+                </h3>
+                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                  {searchTerm ? 'Try adjusting your search term.' : 'No users have been registered yet.'}
+                </p>
+              </div>
+            )}
+          </div>
+        </>
+      )}
+
+      {activeTab === 'requests' && (
+        <div className="space-y-6">
+          {/* Received Requests */}
+          <div className="bg-white dark:bg-dark-200 rounded-xl shadow-sm border border-gray-100 dark:border-dark-100 p-6">
+            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+              Received Requests
+            </h3>
+            {Object.keys(receivedRequests).length === 0 ? (
+              <p className="text-gray-500 dark:text-gray-400">No received requests</p>
+            ) : (
+              <div className="space-y-3">
+                {Object.entries(receivedRequests).map(([requestingUserId, request]) => {
+                  const requestingUser = users.find(u => u.id === requestingUserId);
+                  return (
+                    <div key={requestingUserId} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-dark-100 rounded-lg">
+                      <div>
+                        <p className="font-medium text-gray-900 dark:text-white">
+                          {requestingUser?.name || 'Unknown User'}
+                        </p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                          {request.email}
+                        </p>
+                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium mt-1 ${
+                          request.status === 'pending' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400' :
+                          request.status === 'accepted' ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400' :
+                          'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
+                        }`}>
+                          {request.status}
+                        </span>
+                      </div>
+                      {request.status === 'pending' && (
+                        <div className="flex space-x-2">
+                          <button
+                            onClick={() => respondToRequest(requestingUserId, 'accepted')}
+                            disabled={updating === requestingUserId}
+                            className="px-3 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700"
+                          >
+                            Accept
+                          </button>
+                          <button
+                            onClick={() => respondToRequest(requestingUserId, 'rejected')}
+                            disabled={updating === requestingUserId}
+                            className="px-3 py-1 bg-red-600 text-white rounded text-sm hover:bg-red-700"
+                          >
+                            Reject
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Sent Requests */}
+          <div className="bg-white dark:bg-dark-200 rounded-xl shadow-sm border border-gray-100 dark:border-dark-100 p-6">
+            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+              Sent Requests
+            </h3>
+            {Object.keys(sentRequests).length === 0 ? (
+              <p className="text-gray-500 dark:text-gray-400">No sent requests</p>
+            ) : (
+              <div className="space-y-3">
+                {Object.entries(sentRequests).map(([targetUserId, request]) => {
+                  const targetUser = users.find(u => u.id === targetUserId);
+                  return (
+                    <div key={targetUserId} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-dark-100 rounded-lg">
+                      <div>
+                        <p className="font-medium text-gray-900 dark:text-white">
+                          {targetUser?.name || 'Unknown User'}
+                        </p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                          {request.email}
+                        </p>
+                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium mt-1 ${
+                          request.status === 'pending' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400' :
+                          request.status === 'accepted' ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400' :
+                          'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
+                        }`}>
+                          {request.status}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Add User Modal */}
       <AnimatePresence>

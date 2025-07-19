@@ -14,6 +14,7 @@ import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
 
 interface UserData {
+  name: string;
   email: string;
   role: 'admin' | 'user';
   createdByAdmin: boolean;
@@ -21,6 +22,18 @@ interface UserData {
   updatedAt: Date;
   hasToppedUp?: boolean;
   totalBalance?: number;
+  sentRequests?: {
+    [targetUserId: string]: {
+      status: "pending" | "accepted" | "rejected";
+      email: string;
+    };
+  };
+  receivedRequests?: {
+    [requestingUserId: string]: {
+      status: "pending" | "accepted" | "rejected";
+      email: string;
+    };
+  };
 }
 
 interface AuthContextType {
@@ -139,13 +152,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       // Create the user document in Firestore
       const userData: UserData = {
+        name: user.email!.split('@')[0], // Use email prefix as default name
         email: user.email!,
         role: 'user', // Default role is user
         createdByAdmin: false,
         createdAt: new Date(),
         updatedAt: new Date(),
         hasToppedUp: false,
-        totalBalance: 0
+        totalBalance: 0,
+        sentRequests: {},
+        receivedRequests: {}
       };
 
       await setDoc(doc(db, 'users', user.uid), userData);
@@ -206,13 +222,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (!userDoc.exists()) {
         // Create new user document if it doesn't exist
         const userData: UserData = {
+          name: user.displayName || user.email!.split('@')[0],
           email: user.email!,
           role: 'user',
           createdByAdmin: false,
           createdAt: new Date(),
           updatedAt: new Date(),
           hasToppedUp: false,
-          totalBalance: 0
+          totalBalance: 0,
+          sentRequests: {},
+          receivedRequests: {}
         };
 
         await setDoc(userDocRef, userData);
@@ -282,8 +301,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const impersonateUser = async (userId: string) => {
-    if (!isAdmin()) {
-      throw new Error('Only admins can impersonate users');
+    if (!user) {
+      throw new Error('Must be logged in to impersonate users');
+    }
+
+    // Check if current user has permission to impersonate the target user
+    if (!userData?.sentRequests?.[userId] || userData.sentRequests[userId].status !== 'accepted') {
+      throw new Error('No permission to impersonate this user');
     }
 
     try {

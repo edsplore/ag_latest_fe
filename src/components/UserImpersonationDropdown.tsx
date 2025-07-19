@@ -1,58 +1,66 @@
+
 import React, { useState, useEffect } from 'react';
 import { User, ChevronDown, X, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
-import { collection, getDocs } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 
 interface UserOption {
   id: string;
+  name: string;
   email: string;
   role: 'admin' | 'user';
 }
 
 const UserImpersonationDropdown: React.FC = () => {
   const { 
-    isAdmin, 
     impersonateUser, 
     stopImpersonation, 
     isImpersonating, 
     impersonatedUserData,
-    user 
+    user,
+    userData 
   } = useAuth();
 
   const [isOpen, setIsOpen] = useState(false);
-  const [users, setUsers] = useState<UserOption[]>([]);
+  const [availableUsers, setAvailableUsers] = useState<UserOption[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Only show this component for admins
-  if (!isAdmin()) {
-    return null;
-  }
-
   useEffect(() => {
-    fetchUsers();
-  }, []);
+    if (userData?.sentRequests) {
+      fetchAvailableUsers();
+    }
+  }, [userData]);
 
-  const fetchUsers = async () => {
+  const fetchAvailableUsers = async () => {
+    if (!userData?.sentRequests) return;
+
     setLoading(true);
     try {
-      const usersRef = collection(db, 'users');
-      const snapshot = await getDocs(usersRef);
+      const acceptedRequests = Object.entries(userData.sentRequests)
+        .filter(([_, request]) => request.status === 'accepted');
 
-      const usersData = snapshot.docs
-        .map(doc => ({
-          id: doc.id,
-          email: doc.data().email || 'No email',
-          role: doc.data().role || 'user',
-        }))
-        .filter(u => u.id !== user?.uid); // Exclude current admin from the list
+      const usersData: UserOption[] = [];
+      
+      for (const [userId, _] of acceptedRequests) {
+        const userDoc = await getDoc(doc(db, 'users', userId));
+        if (userDoc.exists()) {
+          const data = userDoc.data();
+          usersData.push({
+            id: userId,
+            name: data.name || data.email?.split('@')[0] || 'Unknown',
+            email: data.email || 'No email',
+            role: data.role || 'user',
+          });
+        }
+      }
 
-      setUsers(usersData);
+      setAvailableUsers(usersData);
     } catch (error) {
-      console.error('Error fetching users:', error);
-      setError('Failed to load users');
+      console.error('Error fetching available users:', error);
+      setError('Failed to load available users');
     } finally {
       setLoading(false);
     }
@@ -74,6 +82,16 @@ const UserImpersonationDropdown: React.FC = () => {
     setIsOpen(false);
   };
 
+  // Don't show if no accepted requests
+  if (!userData?.sentRequests || Object.keys(userData.sentRequests).length === 0) {
+    return null;
+  }
+
+  const hasAcceptedRequests = Object.values(userData.sentRequests).some(req => req.status === 'accepted');
+  if (!hasAcceptedRequests) {
+    return null;
+  }
+
   return (
     <div className="relative">
       {/* Impersonation Banner */}
@@ -89,7 +107,7 @@ const UserImpersonationDropdown: React.FC = () => {
               <div className="flex items-center space-x-3">
                 <AlertCircle className="w-5 h-5" />
                 <span className="font-medium">
-                  Workspace: {impersonatedUserData?.email}
+                  Workspace: {impersonatedUserData?.name || impersonatedUserData?.email}
                 </span>
               </div>
               <button
@@ -130,7 +148,7 @@ const UserImpersonationDropdown: React.FC = () => {
                   Select User to Switch Workspace
                 </h3>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  The app will operate as the selected user
+                  Switch to users who have accepted your requests
                 </p>
               </div>
 
@@ -158,13 +176,13 @@ const UserImpersonationDropdown: React.FC = () => {
                     <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mx-auto"></div>
                     <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">Loading users...</p>
                   </div>
-                ) : users.length === 0 ? (
+                ) : availableUsers.length === 0 ? (
                   <div className="p-4 text-center">
-                    <p className="text-sm text-gray-500 dark:text-gray-400">No users available</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">No users available for workspace switching</p>
                   </div>
                 ) : (
                   <div className="divide-y divide-gray-100 dark:divide-dark-100">
-                    {users.map((userOption) => (
+                    {availableUsers.map((userOption) => (
                       <button
                         key={userOption.id}
                         onClick={() => handleImpersonate(userOption.id)}
@@ -184,10 +202,10 @@ const UserImpersonationDropdown: React.FC = () => {
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                              {userOption.email}
+                              {userOption.name}
                             </p>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 capitalize">
-                              {userOption.role}
+                            <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                              {userOption.email}
                             </p>
                           </div>
                         </div>
