@@ -304,9 +304,9 @@ export const getUsageDetails = async (
     };
   }
 };
-export const getUserInvoices = async (
-  userId: string
-): Promise<{
+
+
+export const getUserInvoices = async (userId: string): Promise<{
   paidInvoices: any[];
   unpaidInvoices: any[];
 }> => {
@@ -317,9 +317,17 @@ export const getUserInvoices = async (
     const paidInvoices: any[] = [];
     const unpaidInvoices: any[] = [];
 
+    const now = new Date();
+    const currentMonthKey = `${now.getFullYear()}-${String(
+      now.getMonth() + 1
+    ).padStart(2, "0")}`;
+
     invoicesSnap.forEach((doc) => {
       const data = doc.data();
       const invoice = { id: doc.id, ...data };
+
+      // Skip current month's invoice
+      if (doc.id === currentMonthKey) return;
 
       if (data.invoiceStatus === "paid") {
         paidInvoices.push(invoice);
@@ -332,5 +340,33 @@ export const getUserInvoices = async (
   } catch (error) {
     console.error("Error fetching user invoices:", error);
     return { paidInvoices: [], unpaidInvoices: [] };
+  }
+};
+
+//pay invoice
+
+export const payInvoice = async (
+  userId: string,
+  monthKey: string
+): Promise<{ success: boolean; invoiceUrl?: string; message?: string }> => {
+  try {
+    const response = await fetch(
+      `${import.meta.env.VITE_BACKEND_URL}/payment/invoice-payment`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, monthKey }),
+      }
+    );
+
+    const data = await response.json();
+    return {
+      success: data.success,
+      invoiceUrl: data.invoiceUrl,
+      message: data.message,
+    };
+  } catch (error) {
+    console.error("Error paying invoice:", error);
+    return { success: false, message: "Payment failed. Please try again." };
   }
 };

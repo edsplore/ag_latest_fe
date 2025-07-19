@@ -6,7 +6,6 @@ import {
   getCustomerId,
   setupPaymentMethod,
   checkPaymentMethodSetup,
-  fetchCustomerInvoices,
   createUserInFirebase,
   setupOneTimeTopUp,
   getUsageDetails,
@@ -33,9 +32,11 @@ const Billing: React.FC = () => {
   const [customerId, setCustomerId] = useState<string>("");
   const [hasPaymentMethod, setHasPaymentMethod] = useState(false);
   const [isLoadingPaymentMethod, setIsLoadingPaymentMethod] = useState(false);
-  const [paymentMethodError, setPaymentMethodError] = useState<string | null>(null);
+  const [paymentMethodError, setPaymentMethodError] = useState<string | null>(
+    null,
+  );
   const [error, setError] = useState<string | null>(null);
-  const [pastInvoices, setPastInvoices] = useState<any[]>([]);
+  // const [pastInvoices, setPastInvoices] = useState<any[]>([]);
   const [paidInvoices, setPaidInvoices] = useState<any[]>([]);
   const [unpaidInvoices, setUnpaidInvoices] = useState<any[]>([]);
   const [userBalance, setUserBalance] = useState<number>(0);
@@ -46,7 +47,11 @@ const Billing: React.FC = () => {
 
   const getCurrentMonthLabel = () => {
     const now = new Date();
-    return " "+ now.toLocaleString("default", { month: "long", year: "numeric" })+ " ";
+    return (
+      " " +
+      now.toLocaleString("default", { month: "long", year: "numeric" }) +
+      " "
+    );
   };
   const formatDateToDDMMYYYY = (isoDate: string): string => {
     const date = new Date(isoDate);
@@ -77,21 +82,26 @@ const Billing: React.FC = () => {
 
         let id = await getCustomerId(effectiveUser.uid);
         if (!id) {
-          id = await createUserInFirebase(effectiveUser.email ?? "", effectiveUser.uid);
+          id = await createUserInFirebase(
+            effectiveUser.email ?? "",
+            effectiveUser.uid,
+          );
         }
 
         if (id) {
           setCustomerId(id);
 
-          const [invoices, paymentMethodStatus, usageDetails, userInvoices] = await Promise.all([
-            fetchCustomerInvoices(id),
-            checkPaymentMethodSetup(id),
-            getUsageDetails(effectiveUser.uid),
-            getUserInvoices(effectiveUser.uid),
-          ]);
+          const [paymentMethodStatus, usageDetails, userInvoices] =
+            await Promise.all([
+              // fetchCustomerInvoices(id),
+              checkPaymentMethodSetup(id),
+              getUsageDetails(effectiveUser.uid),
+              getUserInvoices(effectiveUser.uid),
+            ]);
 
+          
           setHasPaymentMethod(paymentMethodStatus?.hasDynamicSetup || false);
-          setPastInvoices(invoices);
+          // setPastInvoices(invoices);
           setPaidInvoices(userInvoices.paidInvoices);
           setUnpaidInvoices(userInvoices.unpaidInvoices);
           setUserBalance(usageDetails.currentBalance ?? 0);
@@ -100,7 +110,7 @@ const Billing: React.FC = () => {
           setNextInvoiceDate(usageDetails.nextInvoiceDate || "");
         }
       } catch (error) {
-        console.error("Error initializing data:", error);
+        console.error("Error initializi ng data:", error);
       } finally {
         setLoading(false);
       }
@@ -117,7 +127,11 @@ const Billing: React.FC = () => {
     setPaymentMethodError(null);
 
     try {
-      await setupPaymentMethod(effectiveUser.uid, effectiveUser.email, customerId);
+      await setupPaymentMethod(
+        effectiveUser.uid,
+        effectiveUser.email,
+        customerId,
+      );
     } catch (error) {
       setPaymentMethodError(
         error instanceof Error ? error.message : "Something went wrong",
@@ -133,7 +147,12 @@ const Billing: React.FC = () => {
 
     try {
       const amount = 50;
-      await setupOneTimeTopUp(effectiveUser.uid, amount, customerId, effectiveUser.email || "");
+      await setupOneTimeTopUp(
+        effectiveUser.uid,
+        amount,
+        customerId,
+        effectiveUser.email || "",
+      );
     } catch (err) {
       console.error("Top-up failed", err);
       setError("Failed to process top-up. Please try again.");
@@ -153,8 +172,12 @@ const Billing: React.FC = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Billing</h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">Manage top-ups and usage</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+            Billing
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-1">
+            Manage top-ups and usage
+          </p>
         </div>
         <div className="flex flex-col sm:flex-row sm:items-center gap-4 mt-6 bg-white dark:bg-dark-200 p-6 rounded-xl border border-gray-200 dark:border-dark-100">
           {!hasToppedUp && (
@@ -212,15 +235,29 @@ const Billing: React.FC = () => {
                     {invoice.invoiceStatus || "Unpaid"}
                   </span>
                 </div>
+
                 <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
-                  Amount: ${((invoice.total_amount || 0) / 100).toFixed(2)}
+                  Amount: ${((invoice.remainingDue || 0) / 100).toFixed(2)}
                 </p>
                 <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
-                  Usage: ${((invoice.total_usage || 0) / 100).toFixed(2)}
+                  Usage: $
+                  {((invoice.totalCost || 0) / 100).toFixed(2)}
                 </p>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Calls: {invoice.total_convs || 0}
+                  Calls: {invoice.totalConvs || 0}
                 </p>
+
+                {/* Pay Now button */}
+                {invoice.stripeUrl && (
+                  <a
+                    href={invoice.stripeUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-block mt-3 bg-primary text-white text-sm px-4 py-2 rounded hover:bg-primary-700 font-medium"
+                  >
+                    Pay Now
+                  </a>
+                )}
               </div>
             ))}
           </div>
@@ -231,17 +268,23 @@ const Billing: React.FC = () => {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
         {/* Balance */}
         <div className="bg-white dark:bg-dark-200 p-6 rounded-xl border border-gray-200 dark:border-dark-100">
-          <h2 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">Current Balance</h2>
+          <h2 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">
+            Current Balance
+          </h2>
           <div className="flex items-center justify-between">
             <div className="flex-1 text-center">
               <p className="text-sm text-gray-500 mb-1">Balance</p>
-              <p className="text-2xl font-semibold text-primary">${userBalance.toFixed(2)}</p>
+              <p className="text-2xl font-semibold text-primary">
+                ${userBalance.toFixed(2)}
+              </p>
             </div>
             <div className="h-12 border-l border-gray-300 dark:border-gray-600 mx-6"></div>
             <div className="flex-1 text-center">
               <p className="text-sm text-gray-500 mb-1">Next Invoice</p>
               <p className="text-2xl font-semibold text-gray-800 dark:text-white">
-                {nextInvoiceDate ? formatDateToDDMMYYYY(nextInvoiceDate) : getCurrentMonthLabel()}
+                {nextInvoiceDate
+                  ? formatDateToDDMMYYYY(nextInvoiceDate)
+                  : getCurrentMonthLabel()}
               </p>
             </div>
           </div>
@@ -249,16 +292,22 @@ const Billing: React.FC = () => {
 
         {/* Usage + Calls */}
         <div className="bg-white dark:bg-dark-200 p-6 rounded-xl border border-gray-200 dark:border-dark-100">
-          <h2 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">Usage Summary ({getCurrentMonthLabel()}) </h2>
+          <h2 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">
+            Usage Summary ({getCurrentMonthLabel()}){" "}
+          </h2>
           <div className="flex items-center justify-between">
             <div className="flex-1 text-center">
               <p className="text-sm text-gray-500 mb-1">Total Usage</p>
-              <p className="text-2xl font-semibold text-primary">${totalUsage.toFixed(2)}</p>
+              <p className="text-2xl font-semibold text-primary">
+                ${totalUsage.toFixed(2)}
+              </p>
             </div>
             <div className="h-12 border-l border-gray-300 dark:border-gray-600 mx-6"></div>
             <div className="flex-1 text-center">
               <p className="text-sm text-gray-500 mb-1">Total Calls</p>
-              <p className="text-2xl font-semibold text-gray-800 dark:text-white">{totalCalls}</p>
+              <p className="text-2xl font-semibold text-gray-800 dark:text-white">
+                {totalCalls}
+              </p>
             </div>
           </div>
         </div>
@@ -273,17 +322,30 @@ const Billing: React.FC = () => {
           <table className="min-w-full">
             <thead className="bg-gray-50 dark:bg-dark-300">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium">Month</th>
-                <th className="px-6 py-3 text-left text-xs font-medium">Amount</th>
-                <th className="px-6 py-3 text-left text-xs font-medium">Date</th>
-                <th className="px-6 py-3 text-left text-xs font-medium">Status</th>
-                <th className="px-6 py-3 text-left text-xs font-medium">Action</th>
+                <th className="px-6 py-3 text-left text-xs font-medium">
+                  Month
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium">
+                  Amount
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium">
+                  Date
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium">
+                  Status
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium">
+                  Action
+                </th>
               </tr>
             </thead>
             <tbody>
               {paidInvoices.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="text-center py-8 text-gray-500 dark:text-gray-400">
+                  <td
+                    colSpan={5}
+                    className="text-center py-8 text-gray-500 dark:text-gray-400"
+                  >
                     No paid invoices yet.
                   </td>
                 </tr>
@@ -293,22 +355,46 @@ const Billing: React.FC = () => {
                     key={invoice.id}
                     className="hover:bg-gray-50 dark:hover:bg-dark-300/50"
                   >
+                    {/* Month */}
+                    <td className="px-6 py-4">{invoice.id}</td>
+
+                    {/* Amount */}
                     <td className="px-6 py-4">
-                      {invoice.id}
+                      ${((invoice.totalCost || 0) / 100).toFixed(2)}
                     </td>
-                    <td className="px-6 py-4">${((invoice.total_amount || 0) / 100).toFixed(2)}</td>
+
+                    {/* Date */}
                     <td className="px-6 py-4">
-                      {invoice.created_at ? new Date(invoice.created_at.seconds * 1000).toLocaleDateString() : 'N/A'}
+                      {invoice.paidAt
+                        ? new Date(
+                            invoice.paidAt.seconds * 1000,
+                          ).toLocaleDateString()
+                        : "N/A"}
                     </td>
+
+                    {/* Status */}
                     <td className="px-6 py-4 capitalize text-sm font-medium">
                       <span className="text-green-600 dark:text-green-400">
                         {invoice.invoiceStatus || "Paid"}
                       </span>
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm text-gray-600 dark:text-gray-400">
-                        Usage: ${((invoice.total_usage || 0) / 100).toFixed(2)} | Calls: {invoice.total_convs || 0}
+
+                    {/* Action / Details */}
+                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+                      <div>
+                        Usage: ${((invoice.total_usage || 0) / 100).toFixed(2)}{" "}
+                        | Calls: {invoice.total_convs || 0}
                       </div>
+                      {invoice.stripeUrl && (
+                        <a
+                          href={invoice.stripeUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-block mt-2 text-primary hover:underline"
+                        >
+                          Download Invoice
+                        </a>
+                      )}
                     </td>
                   </tr>
                 ))
