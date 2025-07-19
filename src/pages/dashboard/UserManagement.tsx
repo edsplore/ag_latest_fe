@@ -1,14 +1,10 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Users, Search, UserCheck, UserX, Crown, User, Plus, Eye, EyeOff, RefreshCw, X, Send, Check, Clock, MessageSquare } from 'lucide-react';
+import { Users, Search, Crown, User, Send, Check, Clock, MessageSquare, X } from 'lucide-react';
 import { db, auth } from '../../lib/firebase';
 import { collection, getDocs, doc, updateDoc, setDoc, getDoc, onSnapshot } from 'firebase/firestore';
-import { createUserWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
 import { useAuth } from '../../contexts/AuthContext';
-import { initializeApp } from 'firebase/app';
-import { getAuth, signOut } from "firebase/auth";
-import { getFirestore } from 'firebase/firestore';
 
 interface UserType {
   id: string;
@@ -37,16 +33,7 @@ const UserManagement = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [updating, setUpdating] = useState<string | null>(null);
-  const [showAddUserModal, setShowAddUserModal] = useState(false);
-  const [showCredentials, setShowCredentials] = useState<{[key: string]: boolean}>({});
-  const [tempPasswords, setTempPasswords] = useState<{[key: string]: string}>({});
-  const [addUserForm, setAddUserForm] = useState({
-    email: '',
-    password: '',
-    role: 'user' as 'admin' | 'user'
-  });
-  const [addingUser, setAddingUser] = useState(false);
-  const [resettingPassword, setResettingPassword] = useState<string | null>(null);
+  
   const [sendingRequest, setSendingRequest] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'users' | 'requests'>('users');
   const [lastNotificationTime, setLastNotificationTime] = useState<number>(Date.now());
@@ -106,40 +93,7 @@ const UserManagement = () => {
     return () => unsubscribe();
   }, []);
 
-  const updateUserRole = async (userId: string, newRole: 'admin' | 'user') => {
-    if (!user) return;
-
-    // Check if this is the last admin being demoted
-    if (newRole === 'user') {
-      const adminCount = users.filter(u => u.role === 'admin').length;
-      if (adminCount === 1) {
-        alert('Cannot remove the last admin. There must be at least one admin in the system.');
-        return;
-      }
-
-      // Confirm the demotion
-      const confirmDemotion = window.confirm(
-        'Are you sure you want to remove admin privileges from this user? They will lose access to admin features.'
-      );
-      if (!confirmDemotion) return;
-    }
-
-    setUpdating(userId);
-    try {
-      const userRef = doc(db, 'users', userId);
-      await updateDoc(userRef, {
-        role: newRole,
-        updatedAt: new Date(),
-      });
-
-      // No need to update local state - real-time listener will handle it
-    } catch (error) {
-      console.error('Error updating user role:', error);
-      alert('Error updating user role: ' + error);
-    } finally {
-      setUpdating(null);
-    }
-  };
+  
 
   const sendImpersonationRequest = async (targetUserId: string, targetEmail: string) => {
     if (!user || !userData) return;
@@ -302,112 +256,11 @@ const UserManagement = () => {
     }
   };
 
-  const generateRandomPassword = () => {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
-    let password = '';
-    for (let i = 0; i < 12; i++) {
-      password += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return password;
-  };
+  
 
-  const handleAddUser = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user) return;
+  
 
-    setAddingUser(true);
-    try {
-      // Create a secondary Firebase app instance to avoid signing out the current admin
-      const secondaryApp = initializeApp({
-        apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-        authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-        projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-        storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-        messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-        appId: import.meta.env.VITE_FIREBASE_APP_ID,
-        measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
-      }, 'Secondary');
-
-      const secondaryAuth = getAuth(secondaryApp);
-
-      // Create user in Firebase Auth using secondary instance
-      const userCredential = await createUserWithEmailAndPassword(
-        secondaryAuth, 
-        addUserForm.email, 
-        addUserForm.password
-      );
-      const newUser = userCredential.user;
-
-      // Create user document in Firestore
-      const userData = {
-        name: newUser.email!.split('@')[0],
-        email: newUser.email!,
-        role: addUserForm.role,
-        createdByAdmin: true,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        sentRequests: {},
-        receivedRequests: {}
-      };
-
-      await setDoc(doc(db, 'users', newUser.uid), userData);
-
-      // Sign out the new user from secondary auth to prevent them from being logged in
-      await signOut(secondaryAuth);
-
-      // Delete the secondary app
-      await secondaryApp.delete();
-
-      // Store temporary password for display
-      setTempPasswords(prev => ({
-        ...prev,
-        [newUser.uid]: addUserForm.password
-      }));
-
-      // No need to update local state - real-time listener will handle it
-
-      // Reset form and close modal
-      setAddUserForm({ email: '', password: '', role: 'user' });
-      setShowAddUserModal(false);
-
-      alert('User created successfully!');
-    } catch (error: any) {
-      console.error('Error creating user:', error);
-      let errorMessage = 'Failed to create user';
-      if (error.code === 'auth/email-already-in-use') {
-        errorMessage = 'Email is already in use';
-      } else if (error.code === 'auth/weak-password') {
-        errorMessage = 'Password is too weak';
-      } else if (error.code === 'auth/invalid-email') {
-        errorMessage = 'Invalid email address';
-      }
-      alert(errorMessage);
-    } finally {
-      setAddingUser(false);
-    }
-  };
-
-  const handleResetPassword = async (userEmail: string, userId: string) => {
-    if (!user) return;
-
-    setResettingPassword(userId);
-    try {
-      await sendPasswordResetEmail(auth, userEmail);
-      alert(`Password reset email sent to ${userEmail}`);
-    } catch (error) {
-      console.error('Error sending password reset email:', error);
-      alert('Error sending password reset email');
-    } finally {
-      setResettingPassword(null);
-    }
-  };
-
-  const toggleCredentialsVisibility = (userId: string) => {
-    setShowCredentials(prev => ({
-      ...prev,
-      [userId]: !prev[userId]
-    }));
-  };
+  
 
   const getRequestStatus = (targetUserId: string) => {
     return userData?.sentRequests?.[targetUserId]?.status;
@@ -588,21 +441,6 @@ const UserManagement = () => {
                     </div>
 
                     <div className="flex items-center space-x-2">
-                      {/* Credentials Section */}
-                      {tempPasswords[userItem.id] && (
-                        <div className="flex items-center space-x-2 bg-yellow-50 dark:bg-yellow-900/20 px-3 py-2 rounded-lg border border-yellow-200 dark:border-yellow-800">
-                          <span className="text-sm text-yellow-800 dark:text-yellow-200">
-                            Password: {showCredentials[userItem.id] ? tempPasswords[userItem.id] : '••••••••'}
-                          </span>
-                          <button
-                            onClick={() => toggleCredentialsVisibility(userItem.id)}
-                            className="text-yellow-600 hover:text-yellow-800 dark:text-yellow-400 dark:hover:text-yellow-200"
-                          >
-                            {showCredentials[userItem.id] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                          </button>
-                        </div>
-                      )}
-
                       {/* Send Request Button */}
                       {user && canSendRequest(userItem.id) && (
                         <button
@@ -613,41 +451,6 @@ const UserManagement = () => {
                           <Send className="w-4 h-4 mr-1" />
                           {sendingRequest === userItem.id ? 'Sending...' : 'Send Request'}
                         </button>
-                      )}
-
-                      {/* Reset Password Button */}
-                      <button
-                        onClick={() => handleResetPassword(userItem.email, userItem.id)}
-                        disabled={resettingPassword === userItem.id}
-                        className="inline-flex items-center px-3 py-2 border border-gray-300 dark:border-dark-100 text-sm leading-4 font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-dark-100 hover:bg-gray-50 dark:hover:bg-dark-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        <RefreshCw className={`w-4 h-4 mr-1 ${resettingPassword === userItem.id ? 'animate-spin' : ''}`} />
-                        {resettingPassword === userItem.id ? 'Sending...' : 'Reset Password'}
-                      </button>
-
-                      {/* Role Management - Only for admins */}
-                      {userData?.role === 'admin' && (
-                        <>
-                          {userItem.role === 'user' ? (
-                            <button
-                              onClick={() => updateUserRole(userItem.id, 'admin')}
-                              disabled={updating === userItem.id}
-                              className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-amber-600 hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                              <UserCheck className="w-4 h-4 mr-1" />
-                              {updating === userItem.id ? 'Updating...' : 'Make Admin'}
-                            </button>
-                          ) : (
-                            <button
-                              onClick={() => updateUserRole(userItem.id, 'user')}
-                              disabled={updating === userItem.id}
-                              className="inline-flex items-center px-3 py-2 border border-gray-300 dark:border-dark-100 text-sm leading-4 font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-dark-100 hover:bg-gray-50 dark:hover:bg-dark-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                              <UserX className="w-4 h-4 mr-1" />
-                              {updating === userItem.id ? 'Updating...' : 'Remove Admin'}
-                            </button>
-                          )}
-                        </>
                       )}
                     </div>
                   </div>
@@ -771,103 +574,7 @@ const UserManagement = () => {
         </div>
       )}
 
-      {/* Add User Modal */}
-      <AnimatePresence>
-        {showAddUserModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white dark:bg-dark-200 rounded-xl shadow-xl max-w-md w-full"
-            >
-              <div className="p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-medium text-gray-900 dark:text-white">
-                    Add New User
-                  </h3>
-                  <button
-                    onClick={() => setShowAddUserModal(false)}
-                    className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-
-                <form onSubmit={handleAddUser} className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Email Address
-                    </label>
-                    <input
-                      type="email"
-                      required
-                      value={addUserForm.email}
-                      onChange={(e) => setAddUserForm(prev => ({ ...prev, email: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-dark-100 rounded-lg bg-white dark:bg-dark-100 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-primary"
-                      placeholder="user@example.com"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Password
-                    </label>
-                    <div className="flex space-x-2">
-                      <input
-                        type="text"
-                        required
-                        value={addUserForm.password}
-                        onChange={(e) => setAddUserForm(prev => ({ ...prev, password: e.target.value }))}
-                        className="flex-1 px-3 py-2 border border-gray-300 dark:border-dark-100 rounded-lg bg-white dark:bg-dark-100 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-primary"
-                        placeholder="Enter password"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setAddUserForm(prev => ({ ...prev, password: generateRandomPassword() }))}
-                        className="px-3 py-2 border border-gray-300 dark:border-dark-100 rounded-lg bg-white dark:bg-dark-100 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-dark-50"
-                      >
-                        <RefreshCw className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Role
-                    </label>
-                    <select
-                      value={addUserForm.role}
-                      onChange={(e) => setAddUserForm(prev => ({ ...prev, role: e.target.value as 'admin' | 'user' }))}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-dark-100 rounded-lg bg-white dark:bg-dark-100 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-primary"
-                    >
-                      <option value="user">User</option>
-                      <option value="admin">Admin</option>
-                    </select>
-                  </div>
-
-                  <div className="flex space-x-3 pt-4">
-                    <button
-                      type="button"
-                      onClick={() => setShowAddUserModal(false)}
-                      className="flex-1 px-4 py-2 border border-gray-300 dark:border-dark-100 rounded-lg text-gray-700 dark:text-gray-300 bg-white dark:bg-dark-100 hover:bg-gray-50 dark:hover:bg-dark-50"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={addingUser}
-                      className="flex-1 px-4 py-2 bg-primary hover:bg-primary-600 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {addingUser ? 'Creating...' : 'Create User'}
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+      
     </div>
   );
 };
