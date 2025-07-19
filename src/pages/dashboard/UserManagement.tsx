@@ -416,7 +416,7 @@ const UserManagement = () => {
   const canSendRequest = (targetUserId: string) => {
     if (!user || targetUserId === user.uid) return false;
     const status = getRequestStatus(targetUserId);
-    return !status; // Can send if no existing request
+    return !status || status === 'rejected'; // Can send if no existing request or if rejected
   };
 
   const filteredUsers = users.filter(userItem => {
