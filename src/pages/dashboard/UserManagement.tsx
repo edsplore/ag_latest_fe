@@ -273,6 +273,9 @@ const UserManagement = () => {
   };
 
   const filteredUsers = users.filter(userItem => {
+    // Filter out current user from the list
+    if (user && userItem.id === user.uid) return false;
+    
     const email = userItem?.email || '';
     const name = userItem?.name || '';
     return email.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -355,15 +358,9 @@ const UserManagement = () => {
 
               <div className="flex items-center space-x-6 text-sm">
                 <div className="flex items-center space-x-2">
-                  <Crown className="w-4 h-4 text-amber-500" />
+                  <Users className="w-4 h-4 text-primary" />
                   <span className="text-gray-500 dark:text-gray-400">
-                    {users.filter(u => u.role === 'admin').length} Admins
-                  </span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <User className="w-4 h-4 text-blue-500" />
-                  <span className="text-gray-500 dark:text-gray-400">
-                    {users.filter(u => u.role === 'user').length} Users
+                    {filteredUsers.length} Users Available
                   </span>
                 </div>
               </div>
@@ -383,16 +380,8 @@ const UserManagement = () => {
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-4">
-                      <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
-                        userItem.role === 'admin' 
-                          ? 'bg-amber-100 dark:bg-amber-900/20' 
-                          : 'bg-blue-100 dark:bg-blue-900/20'
-                      }`}>
-                        {userItem.role === 'admin' ? (
-                          <Crown className="w-6 h-6 text-amber-600 dark:text-amber-400" />
-                        ) : (
-                          <User className="w-6 h-6 text-blue-600 dark:text-blue-400" />
-                        )}
+                      <div className="w-12 h-12 rounded-full flex items-center justify-center bg-primary/10 dark:bg-primary/20">
+                        <User className="w-6 h-6 text-primary dark:text-primary-400" />
                       </div>
 
                       <div>
@@ -400,13 +389,6 @@ const UserManagement = () => {
                           <h3 className="text-lg font-medium text-gray-900 dark:text-white">
                             {userItem.name}
                           </h3>
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            userItem.role === 'admin'
-                              ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/20 dark:text-amber-400'
-                              : 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400'
-                          }`}>
-                            {userItem.role}
-                          </span>
                         </div>
                         <p className="text-sm text-gray-500 dark:text-gray-400">
                           {userItem.email}
