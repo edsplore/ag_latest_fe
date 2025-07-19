@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Users, Search, UserCheck, UserX, Crown, User, Plus, Eye, EyeOff, RefreshCw, X, Send, Check, Clock, MessageSquare } from 'lucide-react';
 import { db, auth } from '../../lib/firebase';
-import { collection, getDocs, doc, updateDoc, setDoc, getDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, updateDoc, setDoc, getDoc, onSnapshot } from 'firebase/firestore';
 import { createUserWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
 import { useAuth } from '../../contexts/AuthContext';
 import { initializeApp } from 'firebase/app';
@@ -49,22 +49,36 @@ const UserManagement = () => {
   const [resettingPassword, setResettingPassword] = useState<string | null>(null);
   const [sendingRequest, setSendingRequest] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'users' | 'requests'>('users');
+  const [lastNotificationTime, setLastNotificationTime] = useState<number>(Date.now());
   const { user, userData } = useAuth();
 
+  // Show notification when new requests are received
   useEffect(() => {
-    fetchUsers();
-  }, []);
+    if (!userData?.receivedRequests) return;
 
-  const fetchUsers = async () => {
-    try {
-      const usersRef = collection(db, 'users');
-      const snapshot = await getDocs(usersRef);
+    const pendingRequests = Object.values(userData.receivedRequests).filter(
+      (request: any) => request.status === 'pending'
+    );
 
-      console.log('Total users found:', snapshot.docs.length);
+    if (pendingRequests.length > 0) {
+      const now = Date.now();
+      if (now - lastNotificationTime > 5000) { // Only show notification every 5 seconds
+        setLastNotificationTime(now);
+        
+        // You can also add a toast notification here if you have a toast library
+        console.log(`You have ${pendingRequests.length} pending access requests`);
+      }
+    }
+  }, [userData?.receivedRequests, lastNotificationTime]);
+
+  useEffect(() => {
+    // Set up real-time listener for users collection
+    const unsubscribe = onSnapshot(collection(db, 'users'), (snapshot) => {
+      console.log('Real-time update: Total users found:', snapshot.docs.length);
 
       const usersData = snapshot.docs.map(doc => {
         const data = doc.data();
-        console.log('User data:', doc.id, data);
+        console.log('Real-time user data:', doc.id, data);
 
         return {
           id: doc.id,
@@ -79,15 +93,18 @@ const UserManagement = () => {
         };
       }) as UserType[];
 
-      console.log('Processed users:', usersData);
+      console.log('Real-time processed users:', usersData);
       setUsers(usersData);
-    } catch (error) {
-      console.error('Error fetching users:', error);
-      alert('Error fetching users: ' + error);
-    } finally {
       setLoading(false);
-    }
-  };
+    }, (error) => {
+      console.error('Error in real-time listener:', error);
+      alert('Error fetching users: ' + error);
+      setLoading(false);
+    });
+
+    // Cleanup listener on unmount
+    return () => unsubscribe();
+  }, []);
 
   const updateUserRole = async (userId: string, newRole: 'admin' | 'user') => {
     if (!user) return;
@@ -115,9 +132,7 @@ const UserManagement = () => {
         updatedAt: new Date(),
       });
 
-      setUsers(prev => prev.map(u => 
-        u.id === userId ? { ...u, role: newRole, updatedAt: new Date() } : u
-      ));
+      // No need to update local state - real-time listener will handle it
     } catch (error) {
       console.error('Error updating user role:', error);
       alert('Error updating user role: ' + error);
@@ -166,29 +181,7 @@ const UserManagement = () => {
         });
       }
 
-      // Update local state
-      setUsers(prev => prev.map(u => {
-        if (u.id === user.uid) {
-          return {
-            ...u,
-            sentRequests: newSentRequests
-          };
-        }
-        if (u.id === targetUserId) {
-          return {
-            ...u,
-            receivedRequests: {
-              ...u.receivedRequests,
-              [user.uid]: {
-                status: 'pending' as const,
-                email: userData.email
-              }
-            }
-          };
-        }
-        return u;
-      }));
-
+      // No need to update local state - real-time listener will handle it
       alert('Request sent successfully!');
     } catch (error) {
       console.error('Error sending request:', error);
@@ -241,29 +234,7 @@ const UserManagement = () => {
         });
       }
 
-      // Update local state
-      setUsers(prev => prev.map(u => {
-        if (u.id === user.uid) {
-          return {
-            ...u,
-            receivedRequests: newReceivedRequests
-          };
-        }
-        if (u.id === requestingUserId) {
-          return {
-            ...u,
-            sentRequests: {
-              ...u.sentRequests,
-              [user.uid]: {
-                status: response,
-                email: userData.email
-              }
-            }
-          };
-        }
-        return u;
-      }));
-
+      // No need to update local state - real-time listener will handle it
       alert(`Request ${response} successfully!`);
     } catch (error) {
       console.error('Error responding to request:', error);
@@ -335,11 +306,7 @@ const UserManagement = () => {
         [newUser.uid]: addUserForm.password
       }));
 
-      // Add to local state
-      setUsers(prev => [...prev, {
-        id: newUser.uid,
-        ...userData
-      }]);
+      // No need to update local state - real-time listener will handle it
 
       // Reset form and close modal
       setAddUserForm({ email: '', password: '', role: 'user' });

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
@@ -18,6 +18,8 @@ import {
 import { cn } from "../lib/utils";
 import { ThemeToggle } from "./ThemeToggle";
 import { useAuth } from "../contexts/AuthContext";
+import { doc, onSnapshot } from "firebase/firestore";
+import { db } from "../lib/firebase";
 
 const adminMenuItems = [
   { icon: Box, label: "Dashboard", path: "/dashboard" },
@@ -44,11 +46,30 @@ const userMenuItems = [
 
 const Sidebar = () => {
   const location = useLocation();
-  const { logout, isAdmin } = useAuth();
+  const { logout, isAdmin, user, userData } = useAuth();
 
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [pendingRequestsCount, setPendingRequestsCount] = useState(0);
 
   const menuItems = isAdmin() ? adminMenuItems : userMenuItems;
+
+  // Listen for real-time updates to user's received requests
+  useEffect(() => {
+    if (!user) return;
+
+    const unsubscribe = onSnapshot(doc(db, 'users', user.uid), (doc) => {
+      if (doc.exists()) {
+        const data = doc.data();
+        const receivedRequests = data.receivedRequests || {};
+        const pendingCount = Object.values(receivedRequests).filter(
+          (request: any) => request.status === 'pending'
+        ).length;
+        setPendingRequestsCount(pendingCount);
+      }
+    });
+
+    return () => unsubscribe();
+  }, [user]);
 
   return (
     <motion.div
@@ -117,9 +138,15 @@ const Sidebar = () => {
                   <motion.span
                     initial={false}
                     animate={{ opacity: 1, width: "auto" }}
-                    className="ml-3 tracking-wide text-[14px]"
+                    className="ml-3 tracking-wide text-[14px] flex items-center"
                   >
                     {item.label}
+                    {/* Notification badge for User Management */}
+                    {item.path === '/dashboard/users' && pendingRequestsCount > 0 && (
+                      <span className="ml-2 inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-red-500 rounded-full">
+                        {pendingRequestsCount > 9 ? '9+' : pendingRequestsCount}
+                      </span>
+                    )}
                   </motion.span>
                 )}
 
@@ -131,7 +158,17 @@ const Sidebar = () => {
                                transition-all duration-200 whitespace-nowrap z-50"
                   >
                     {item.label}
+                    {item.path === '/dashboard/users' && pendingRequestsCount > 0 && (
+                      <span className="ml-1 text-red-400">({pendingRequestsCount})</span>
+                    )}
                   </div>
+                )}
+
+                {/* Notification badge for collapsed state */}
+                {isCollapsed && item.path === '/dashboard/users' && pendingRequestsCount > 0 && (
+                  <span className="absolute -top-1 -right-1 inline-flex items-center justify-center w-4 h-4 text-xs font-bold text-white bg-red-500 rounded-full">
+                    {pendingRequestsCount > 9 ? '9+' : pendingRequestsCount}
+                  </span>
                 )}
               </Link>
             );
