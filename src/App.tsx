@@ -7,6 +7,7 @@ import Signup from './pages/auth/Signup';
 import Dashboard from './pages/Dashboard';
 import AgentDetails from './pages/dashboard/AgentDetails';
 import KnowledgeBaseDetails from './pages/dashboard/KnowledgeBaseDetails';
+import UserManagement from './pages/dashboard/UserManagement';
 import { Loader } from './components/Loader';
 
 function App() {

@@ -1,4 +1,3 @@
-
 import { Routes, Route } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
@@ -75,7 +74,7 @@ const DashboardHome = () => {
 
     try {
       setLoading(true);
-      
+
       // Fetch dashboard data from single endpoint
       const response = await fetch(
         `${BACKEND_URL}/dashboard/${effectiveUser.uid}`,
@@ -88,7 +87,7 @@ const DashboardHome = () => {
 
       if (response.ok) {
         const data = await response.json();
-        
+
         // Update stats if provided
         if (data.statistics) {
           setStats({
@@ -98,7 +97,7 @@ const DashboardHome = () => {
             messagesToday: data.statistics.total_calls || 0
           });
         }
-        
+
         // Transform recent_calls to recent activity format
         if (data.recent_calls && Array.isArray(data.recent_calls)) {
           const transformedActivity = data.recent_calls.map((call: any) => ({
@@ -344,7 +343,7 @@ const Dashboard = () => {
               <Route path="tools/:toolId" element={<ToolDetails />} />
               <Route path="batch-calling" element={<BatchCalling />} />
               <Route path="billing" element={<Billing />} />
-              {isAdmin() && <Route path="users" element={<UserManagement />} />}
+              <Route path="users" element={<UserManagement />} />
             </Routes>
           </div>
         </main>
