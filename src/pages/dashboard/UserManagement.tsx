@@ -244,6 +244,64 @@ const UserManagement = () => {
     }
   };
 
+  const removeAccess = async (requestingUserId: string) => {
+    if (!user || !userData) return;
+
+    const confirmRemoval = window.confirm(
+      'Are you sure you want to remove access for this user? They will no longer be able to impersonate your account.'
+    );
+    if (!confirmRemoval) return;
+
+    setUpdating(requestingUserId);
+    try {
+      const requestingUser = users.find(u => u.id === requestingUserId);
+      if (!requestingUser) return;
+
+      // Update current user's receivedRequests to rejected
+      const currentUserRef = doc(db, 'users', user.uid);
+      const newReceivedRequests = {
+        ...userData.receivedRequests,
+        [requestingUserId]: {
+          status: 'rejected' as const,
+          email: requestingUser.email
+        }
+      };
+
+      await updateDoc(currentUserRef, {
+        receivedRequests: newReceivedRequests,
+        updatedAt: new Date()
+      });
+
+      // Update requesting user's sentRequests to rejected
+      const requestingUserRef = doc(db, 'users', requestingUserId);
+      const requestingUserDoc = await getDoc(requestingUserRef);
+      
+      if (requestingUserDoc.exists()) {
+        const requestingUserData = requestingUserDoc.data();
+        const newSentRequests = {
+          ...requestingUserData.sentRequests,
+          [user.uid]: {
+            status: 'rejected' as const,
+            email: userData.email
+          }
+        };
+
+        await updateDoc(requestingUserRef, {
+          sentRequests: newSentRequests,
+          updatedAt: new Date()
+        });
+      }
+
+      // No need to update local state - real-time listener will handle it
+      alert('Access removed successfully!');
+    } catch (error) {
+      console.error('Error removing access:', error);
+      alert('Error removing access: ' + error);
+    } finally {
+      setUpdating(null);
+    }
+  };
+
   const generateRandomPassword = () => {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
     let password = '';
@@ -659,6 +717,15 @@ const UserManagement = () => {
                             Reject
                           </button>
                         </div>
+                      )}
+                      {request.status === 'accepted' && (
+                        <button
+                          onClick={() => removeAccess(requestingUserId)}
+                          disabled={updating === requestingUserId}
+                          className="px-3 py-1 bg-red-600 text-white rounded text-sm hover:bg-red-700"
+                        >
+                          {updating === requestingUserId ? 'Removing...' : 'Remove Access'}
+                        </button>
                       )}
                     </div>
                   );
