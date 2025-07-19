@@ -60,7 +60,7 @@ const UserManagement = () => {
 
   useEffect(() => {
     // Set up real-time listener for users collection
-    const unsubscribe = onSnapshot(collection(db, 'users'), (snapshot) => {
+    const usersUnsubscribe = onSnapshot(collection(db, 'users'), (snapshot) => {
       console.log('Real-time update: Total users found:', snapshot.docs.length);
 
       const usersData = snapshot.docs.map(doc => {
@@ -89,9 +89,28 @@ const UserManagement = () => {
       setLoading(false);
     });
 
-    // Cleanup listener on unmount
-    return () => unsubscribe();
-  }, []);
+    // Set up real-time listener for current user's document to get updated requests
+    let currentUserUnsubscribe: (() => void) | null = null;
+    if (user) {
+      currentUserUnsubscribe = onSnapshot(doc(db, 'users', user.uid), (doc) => {
+        if (doc.exists()) {
+          const data = doc.data();
+          // Update userData is handled by AuthContext, but we can trigger re-render
+          console.log('Current user data updated:', data);
+        }
+      }, (error) => {
+        console.error('Error listening to current user data:', error);
+      });
+    }
+
+    // Cleanup listeners on unmount
+    return () => {
+      usersUnsubscribe();
+      if (currentUserUnsubscribe) {
+        currentUserUnsubscribe();
+      }
+    };
+  }, [user]);
 
   
 
@@ -135,8 +154,8 @@ const UserManagement = () => {
         });
       }
 
-      // No need to update local state - real-time listener will handle it
-      alert('Request sent successfully!');
+      // Real-time listener will handle state updates automatically
+      console.log('Request sent successfully to', targetEmail);
     } catch (error) {
       console.error('Error sending request:', error);
       alert('Error sending request: ' + error);
@@ -188,8 +207,8 @@ const UserManagement = () => {
         });
       }
 
-      // No need to update local state - real-time listener will handle it
-      alert(`Request ${response} successfully!`);
+      // Real-time listener will handle state updates automatically
+      console.log(`Request ${response} successfully for user:`, requestingUserId);
     } catch (error) {
       console.error('Error responding to request:', error);
       alert('Error responding to request: ' + error);
@@ -246,8 +265,8 @@ const UserManagement = () => {
         });
       }
 
-      // No need to update local state - real-time listener will handle it
-      alert('Access removed successfully!');
+      // Real-time listener will handle state updates automatically
+      console.log('Access removed successfully for user:', requestingUserId);
     } catch (error) {
       console.error('Error removing access:', error);
       alert('Error removing access: ' + error);
@@ -333,6 +352,10 @@ const UserManagement = () => {
             <div className="flex items-center space-x-2">
               <MessageSquare className="w-4 h-4" />
               <span>Requests</span>
+              {/* Notification dot for pending requests */}
+              {Object.values(receivedRequests).filter(req => req.status === 'pending').length > 0 && (
+                <span className="inline-flex items-center justify-center w-2 h-2 bg-red-500 rounded-full"></span>
+              )}
             </div>
           </button>
         </div>
