@@ -53,23 +53,19 @@ const Sidebar = () => {
 
   const menuItems = isAdmin() ? adminMenuItems : userMenuItems;
 
-  // Listen for real-time updates to user's received requests
+  // Calculate pending requests count from userData (updated by AuthContext listener)
   useEffect(() => {
-    if (!user) return;
+    if (!userData) {
+      setPendingRequestsCount(0);
+      return;
+    }
 
-    const unsubscribe = onSnapshot(doc(db, 'users', user.uid), (doc) => {
-      if (doc.exists()) {
-        const data = doc.data();
-        const receivedRequests = data.receivedRequests || {};
-        const pendingCount = Object.values(receivedRequests).filter(
-          (request: any) => request.status === 'pending'
-        ).length;
-        setPendingRequestsCount(pendingCount);
-      }
-    });
-
-    return () => unsubscribe();
-  }, [user]);
+    const receivedRequests = userData.receivedRequests || {};
+    const pendingCount = Object.values(receivedRequests).filter(
+      (request: any) => request.status === 'pending'
+    ).length;
+    setPendingRequestsCount(pendingCount);
+  }, [userData]);
 
   return (
     <motion.div

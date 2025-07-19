@@ -59,7 +59,7 @@ const UserManagement = () => {
   }, [userData?.receivedRequests, lastNotificationTime]);
 
   useEffect(() => {
-    // Set up real-time listener for users collection
+    // Set up real-time listener for users collection only
     const usersUnsubscribe = onSnapshot(collection(db, 'users'), (snapshot) => {
       console.log('Real-time update: Total users found:', snapshot.docs.length);
 
@@ -89,28 +89,9 @@ const UserManagement = () => {
       setLoading(false);
     });
 
-    // Set up real-time listener for current user's document to get updated requests
-    let currentUserUnsubscribe: (() => void) | null = null;
-    if (user) {
-      currentUserUnsubscribe = onSnapshot(doc(db, 'users', user.uid), (doc) => {
-        if (doc.exists()) {
-          const data = doc.data();
-          // Update userData is handled by AuthContext, but we can trigger re-render
-          console.log('Current user data updated:', data);
-        }
-      }, (error) => {
-        console.error('Error listening to current user data:', error);
-      });
-    }
-
-    // Cleanup listeners on unmount
-    return () => {
-      usersUnsubscribe();
-      if (currentUserUnsubscribe) {
-        currentUserUnsubscribe();
-      }
-    };
-  }, [user]);
+    // Cleanup listener on unmount
+    return () => usersUnsubscribe();
+  }, []);
 
   
 

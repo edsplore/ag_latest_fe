@@ -10,7 +10,7 @@ import {
   fetchSignInMethodsForEmail
 } from 'firebase/auth';
 import { FirebaseError } from 'firebase/app';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
 
 interface UserData {
@@ -81,6 +81,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.error('Error fetching user data:', error);
     }
   };
+
+  // Set up real-time listener for current user's data
+  useEffect(() => {
+    if (!user) return;
+
+    const unsubscribe = onSnapshot(doc(db, 'users', user.uid), (doc) => {
+      if (doc.exists()) {
+        const data = doc.data() as UserData;
+        setUserData(data);
+        console.log('User data updated in real-time:', data);
+      }
+    }, (error) => {
+      console.error('Error listening to user data:', error);
+    });
+
+    return () => unsubscribe();
+  }, [user]);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
