@@ -1,9 +1,9 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Users, Search, User, Send, Check, Clock, MessageSquare, X, Trash2 } from 'lucide-react';
+import { Users, Search, User, Send, Check, Clock, MessageSquare, X } from 'lucide-react';
 import { db } from '../../lib/firebase';
-import { collection, doc, updateDoc, getDoc, onSnapshot, deleteDoc } from 'firebase/firestore';
+import { collection, doc, updateDoc, getDoc, onSnapshot } from 'firebase/firestore';
 import { useAuth } from '../../contexts/AuthContext';
 
 interface UserType {
@@ -251,84 +251,6 @@ const UserManagement = () => {
     } catch (error) {
       console.error('Error removing access:', error);
       alert('Error removing access: ' + error);
-    } finally {
-      setUpdating(null);
-    }
-  };
-
-  const deleteUser = async (targetUserId: string) => {
-    if (!user || !userData) return;
-
-    const targetUser = users.find(u => u.id === targetUserId);
-    if (!targetUser) return;
-
-    const confirmDeletion = window.confirm(
-      `Are you sure you want to PERMANENTLY DELETE ${targetUser.name} (${targetUser.email}) from the database? This action cannot be undone and will remove all their data including authentication.`
-    );
-    if (!confirmDeletion) return;
-
-    const doubleConfirm = window.confirm(
-      `This is your final warning. Clicking OK will PERMANENTLY DELETE this user and all their data. Are you absolutely sure?`
-    );
-    if (!doubleConfirm) return;
-
-    setUpdating(targetUserId);
-    try {
-      // Delete the user document from Firestore
-      await deleteDoc(doc(db, 'users', targetUserId));
-
-      // Remove the user from current user's sentRequests
-      const currentUserRef = doc(db, 'users', user.uid);
-      const newSentRequests = { ...userData.sentRequests };
-      delete newSentRequests[targetUserId];
-
-      await updateDoc(currentUserRef, {
-        sentRequests: newSentRequests,
-        updatedAt: new Date()
-      });
-
-      // Clean up references to this user in all other users' data
-      const allUsers = users.filter(u => u.id !== targetUserId);
-      const cleanupPromises = allUsers.map(async (userItem) => {
-        const userRef = doc(db, 'users', userItem.id);
-        const userDoc = await getDoc(userRef);
-        
-        if (userDoc.exists()) {
-          const userData = userDoc.data();
-          let needsUpdate = false;
-          const updates: any = {};
-
-          // Remove from sentRequests
-          if (userData.sentRequests && userData.sentRequests[targetUserId]) {
-            const newSentRequests = { ...userData.sentRequests };
-            delete newSentRequests[targetUserId];
-            updates.sentRequests = newSentRequests;
-            needsUpdate = true;
-          }
-
-          // Remove from receivedRequests
-          if (userData.receivedRequests && userData.receivedRequests[targetUserId]) {
-            const newReceivedRequests = { ...userData.receivedRequests };
-            delete newReceivedRequests[targetUserId];
-            updates.receivedRequests = newReceivedRequests;
-            needsUpdate = true;
-          }
-
-          if (needsUpdate) {
-            updates.updatedAt = new Date();
-            await updateDoc(userRef, updates);
-          }
-        }
-      });
-
-      await Promise.all(cleanupPromises);
-
-      // Real-time listener will handle state updates automatically
-      console.log('User deleted successfully:', targetUserId);
-      alert(`User ${targetUser.name} has been permanently deleted from the database.`);
-    } catch (error) {
-      console.error('Error deleting user:', error);
-      alert('Error deleting user: ' + error);
     } finally {
       setUpdating(null);
     }
@@ -629,16 +551,6 @@ const UserManagement = () => {
                           {request.status}
                         </span>
                       </div>
-                      {request.status === 'accepted' && (
-                        <button
-                          onClick={() => deleteUser(targetUserId)}
-                          disabled={updating === targetUserId}
-                          className="inline-flex items-center px-3 py-1 bg-red-600 text-white rounded text-sm hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          <Trash2 className="w-3 h-3 mr-1" />
-                          {updating === targetUserId ? 'Deleting...' : 'Delete User'}
-                        </button>
-                      )}
                     </div>
                   );
                 })}
