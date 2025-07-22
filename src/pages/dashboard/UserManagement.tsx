@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Users, Search, User, Send, Check, Clock, MessageSquare, X } from 'lucide-react';
@@ -33,7 +32,7 @@ const UserManagement = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [updating, setUpdating] = useState<string | null>(null);
-  
+
   const [sendingRequest, setSendingRequest] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'users' | 'requests'>('users');
   const [lastNotificationTime, setLastNotificationTime] = useState<number>(Date.now());
@@ -51,7 +50,7 @@ const UserManagement = () => {
       const now = Date.now();
       if (now - lastNotificationTime > 5000) { // Only show notification every 5 seconds
         setLastNotificationTime(now);
-        
+
         // You can also add a toast notification here if you have a toast library
         console.log(`You have ${pendingRequests.length} pending access requests`);
       }
@@ -93,7 +92,7 @@ const UserManagement = () => {
     return () => usersUnsubscribe();
   }, []);
 
-  
+
 
   const sendImpersonationRequest = async (targetUserId: string, targetEmail: string) => {
     if (!user || !userData) return;
@@ -118,7 +117,7 @@ const UserManagement = () => {
       // Update target user's receivedRequests
       const targetUserRef = doc(db, 'users', targetUserId);
       const targetUserDoc = await getDoc(targetUserRef);
-      
+
       if (targetUserDoc.exists()) {
         const targetUserData = targetUserDoc.data();
         const newReceivedRequests = {
@@ -171,7 +170,7 @@ const UserManagement = () => {
       // Update requesting user's sentRequests
       const requestingUserRef = doc(db, 'users', requestingUserId);
       const requestingUserDoc = await getDoc(requestingUserRef);
-      
+
       if (requestingUserDoc.exists()) {
         const requestingUserData = requestingUserDoc.data();
         const newSentRequests = {
@@ -229,7 +228,7 @@ const UserManagement = () => {
       // Update requesting user's sentRequests to rejected
       const requestingUserRef = doc(db, 'users', requestingUserId);
       const requestingUserDoc = await getDoc(requestingUserRef);
-      
+
       if (requestingUserDoc.exists()) {
         const requestingUserData = requestingUserDoc.data();
         const newSentRequests = {
@@ -256,11 +255,11 @@ const UserManagement = () => {
     }
   };
 
-  
 
-  
 
-  
+
+
+
 
   const getRequestStatus = (targetUserId: string) => {
     return userData?.sentRequests?.[targetUserId]?.status;
@@ -275,7 +274,7 @@ const UserManagement = () => {
   const filteredUsers = users.filter(userItem => {
     // Filter out current user from the list
     if (user && userItem.id === user.uid) return false;
-    
+
     const email = userItem?.email || '';
     const name = userItem?.name || '';
     return email.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -284,6 +283,54 @@ const UserManagement = () => {
 
   const receivedRequests = userData?.receivedRequests || {};
   const sentRequests = userData?.sentRequests || {};
+
+  const deleteUser = async (targetUserId: string) => {
+    if (!user || !userData) return;
+
+    const targetUser = users.find(u => u.id === targetUserId);
+    if (!targetUser) return;
+
+    const confirmDeletion = window.confirm(
+      `Are you sure you want to PERMANENTLY DELETE ${targetUser.name} (${targetUser.email}) from the database? This action cannot be undone and will remove all their data including authentication.`
+    );
+    if (!confirmDeletion) return;
+
+    const doubleConfirm = window.confirm(
+      `This is your final warning. Clicking OK will PERMANENTLY DELETE this user and all their data. Are you absolutely sure?`
+    );
+    if (!doubleConfirm) return;
+
+    setUpdating(targetUserId);
+    try {
+      const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+
+      const response = await fetch(`${BACKEND_URL}/api/users/delete`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          currentUserId: user.uid,
+          targetUserId: targetUserId,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to delete user');
+      }
+
+      // Real-time listener will handle state updates automatically
+      console.log('User deleted successfully:', targetUserId);
+      alert(`User ${targetUser.name} has been permanently deleted from the database.`);
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      alert('Error deleting user: ' + (error instanceof Error ? error.message : error));
+    } finally {
+      setUpdating(null);
+    }
+  };
 
   if (loading) {
     return (
@@ -438,6 +485,16 @@ const UserManagement = () => {
                           {sendingRequest === userItem.id ? 'Sending...' : 'Send Request'}
                         </button>
                       )}
+                      {/* Delete User Button (Admin Only) */}
+                      {userData?.role === 'admin' && userItem.id !== user.uid && (
+                        <button
+                          onClick={() => deleteUser(userItem.id)}
+                          disabled={updating === userItem.id}
+                          className="inline-flex items-center px-3 py-2 border border-red-500 text-sm leading-4 font-medium rounded-md text-red-500 bg-white dark:bg-dark-100 hover:bg-red-500 hover:text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {updating === userItem.id ? 'Deleting...' : 'Delete User'}
+                        </button>
+                      )}
                     </div>
                   </div>
                 </motion.div>
@@ -560,7 +617,7 @@ const UserManagement = () => {
         </div>
       )}
 
-      
+
     </div>
   );
 };
