@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Users, Search, User, Send, Check, Clock, MessageSquare, X } from 'lucide-react';
+import { Users, Search, User, Send, Check, Clock, MessageSquare, X, Trash2 } from 'lucide-react';
 import { db } from '../../lib/firebase';
 import { collection, doc, updateDoc, getDoc, onSnapshot } from 'firebase/firestore';
 import { useAuth } from '../../contexts/AuthContext';
@@ -485,16 +485,6 @@ const UserManagement = () => {
                           {sendingRequest === userItem.id ? 'Sending...' : 'Send Request'}
                         </button>
                       )}
-                      {/* Delete User Button (Admin Only) */}
-                      {userData?.role === 'admin' && userItem.id !== user.uid && (
-                        <button
-                          onClick={() => deleteUser(userItem.id)}
-                          disabled={updating === userItem.id}
-                          className="inline-flex items-center px-3 py-2 border border-red-500 text-sm leading-4 font-medium rounded-md text-red-500 bg-white dark:bg-dark-100 hover:bg-red-500 hover:text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          {updating === userItem.id ? 'Deleting...' : 'Delete User'}
-                        </button>
-                      )}
                     </div>
                   </div>
                 </motion.div>
@@ -608,6 +598,16 @@ const UserManagement = () => {
                           {request.status}
                         </span>
                       </div>
+                      {request.status === 'accepted' && (
+                        <button
+                          onClick={() => deleteUser(targetUserId)}
+                          disabled={updating === targetUserId}
+                          className="inline-flex items-center px-3 py-1 bg-red-600 text-white rounded text-sm hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <Trash2 className="w-3 h-3 mr-1" />
+                          {updating === targetUserId ? 'Deleting...' : 'Delete User'}
+                        </button>
+                      )}
                     </div>
                   );
                 })}
