@@ -1,9 +1,9 @@
 
 import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Users, Search, Crown, User, Send, Check, Clock, MessageSquare, X } from 'lucide-react';
-import { db, auth } from '../../lib/firebase';
-import { collection, getDocs, doc, updateDoc, setDoc, getDoc, onSnapshot } from 'firebase/firestore';
+import { motion } from 'framer-motion';
+import { Users, Search, User, Send, Check, Clock, MessageSquare, X } from 'lucide-react';
+import { db } from '../../lib/firebase';
+import { collection, doc, updateDoc, getDoc, onSnapshot } from 'firebase/firestore';
 import { useAuth } from '../../contexts/AuthContext';
 
 interface UserType {

@@ -268,7 +268,7 @@ export const getUsageDetails = async (
       const userData = userSnap.data();
       totalUsage = userData.usage / 100 || 0;
       let balance: number = userData.balance || 0;
-      currentBalance = balance - totalUsage || 0;
+      currentBalance = balance - totalUsage ;
     }
 
     const invoiceRef = doc(db, "users", userId, "invoices", currentMonthKey);
@@ -278,7 +278,7 @@ export const getUsageDetails = async (
 
     if (invoiceSnap.exists()) {
       const invoiceData = invoiceSnap.data();
-      totalCalls = invoiceData.total_convs || 0;
+      totalCalls = invoiceData.totalConvs || 0;
     }
 
     // Next invoice is due on the 1st of next month
