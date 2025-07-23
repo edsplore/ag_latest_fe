@@ -16,7 +16,7 @@ import { auth, db } from '../lib/firebase';
 interface UserData {
   name: string;
   email: string;
-  role: 'admin' | 'user';
+  role: 'admin' | 'user' | 'super-admin';
   createdByAdmin: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -322,8 +322,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       throw new Error('Must be logged in to impersonate users');
     }
 
-    // Check if current user has permission to impersonate the target user
-    if (!userData?.sentRequests?.[userId] || userData.sentRequests[userId].status !== 'accepted') {
+    // Super admin can impersonate any user, others need accepted requests
+    const isSuperAdmin = userData?.role === 'super-admin';
+    const hasAcceptedRequest = userData?.sentRequests?.[userId]?.status === 'accepted';
+    
+    if (!isSuperAdmin && !hasAcceptedRequest) {
       throw new Error('No permission to impersonate this user');
     }
 

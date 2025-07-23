@@ -36,7 +36,7 @@ const UserManagement = () => {
   const [sendingRequest, setSendingRequest] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'users' | 'requests'>('users');
   const [lastNotificationTime, setLastNotificationTime] = useState<number>(Date.now());
-  const { user, userData } = useAuth();
+  const { user, userData, impersonateUser } = useAuth();
 
   // Show notification when new requests are received
   useEffect(() => {
@@ -474,8 +474,19 @@ const UserManagement = () => {
                     </div>
 
                     <div className="flex items-center space-x-2">
+                      {/* Super Admin Switch User Button */}
+                      {userData?.role === 'super-admin' && userItem.id !== user.uid && (
+                        <button
+                          onClick={() => impersonateUser(userItem.id)}
+                          className="inline-flex items-center px-3 py-2 border border-blue-500 text-sm leading-4 font-medium rounded-md text-blue-500 bg-white dark:bg-dark-100 hover:bg-blue-500 hover:text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                        >
+                          <User className="w-4 h-4 mr-1" />
+                          Switch User
+                        </button>
+                      )}
+                      
                       {/* Send Request Button */}
-                      {user && canSendRequest(userItem.id) && (
+                      {user && canSendRequest(userItem.id) && userData?.role !== 'super-admin' && (
                         <button
                           onClick={() => sendImpersonationRequest(userItem.id, userItem.email)}
                           disabled={sendingRequest === userItem.id}
@@ -483,6 +494,18 @@ const UserManagement = () => {
                         >
                           <Send className="w-4 h-4 mr-1" />
                           {sendingRequest === userItem.id ? 'Sending...' : 'Send Request'}
+                        </button>
+                      )}
+
+                      {/* Delete User Button (Super Admin Only) */}
+                      {userData?.role === 'super-admin' && userItem.id !== user.uid && (
+                        <button
+                          onClick={() => deleteUser(userItem.id)}
+                          disabled={updating === userItem.id}
+                          className="inline-flex items-center px-3 py-2 border border-red-500 text-sm leading-4 font-medium rounded-md text-red-500 bg-white dark:bg-dark-100 hover:bg-red-500 hover:text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <Trash2 className="w-4 h-4 mr-1" />
+                          {updating === userItem.id ? 'Deleting...' : 'Delete User'}
                         </button>
                       )}
                     </div>
