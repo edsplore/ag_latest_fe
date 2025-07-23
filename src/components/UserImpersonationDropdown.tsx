@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { User, ChevronDown, X, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -240,16 +239,6 @@ const UserImpersonationDropdown: React.FC = () => {
                               <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
                                 {userOption.name}
                               </p>
-                              {userOption.role === 'super-admin' && (
-                                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400">
-                                  Super Admin
-                                </span>
-                              )}
-                              {userOption.role === 'admin' && (
-                                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/20 dark:text-amber-400">
-                                  Admin
-                                </span>
-                              )}
                             </div>
                             <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
                               {userOption.email}
