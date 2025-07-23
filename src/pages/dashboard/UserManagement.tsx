@@ -302,9 +302,9 @@ const UserManagement = () => {
 
     setUpdating(targetUserId);
     try {
-      const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+      const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 
-      const response = await fetch(`${BACKEND_URL}/api/users/delete`, {
+      const response = await fetch(`${BACKEND_URL}/users/delete`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
