@@ -3,14 +3,14 @@ import React, { useState, useEffect } from 'react';
 import { User, ChevronDown, X, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 
 interface UserOption {
   id: string;
   name: string;
   email: string;
-  role: 'admin' | 'user';
+  role: 'admin' | 'user' | 'super-admin';
 }
 
 const UserImpersonationDropdown: React.FC = () => {
@@ -29,39 +29,65 @@ const UserImpersonationDropdown: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (userData?.sentRequests) {
+    if (userData) {
       fetchAvailableUsers();
     }
   }, [userData]);
 
   const fetchAvailableUsers = async () => {
-    if (!userData?.sentRequests) return;
+    if (!userData) return;
 
     setLoading(true);
     try {
-      const acceptedRequests = Object.entries(userData.sentRequests)
-        .filter(([_, request]) => request.status === 'accepted');
-
       const usersData: UserOption[] = [];
-      
-      for (const [userId, _] of acceptedRequests) {
-        const userDoc = await getDoc(doc(db, 'users', userId));
-        if (userDoc.exists()) {
-          const data = userDoc.data();
-          usersData.push({
-            id: userId,
-            name: data.name || data.email?.split('@')[0] || 'Unknown',
-            email: data.email || 'No email',
-            role: data.role || 'user',
-          });
-        }
-      }
 
-      setAvailableUsers(usersData);
+      if (userData.role === 'super-admin') {
+        // Super admin can see all users
+        const unsubscribe = onSnapshot(collection(db, 'users'), (snapshot) => {
+          const allUsers: UserOption[] = [];
+          snapshot.docs.forEach(doc => {
+            const data = doc.data();
+            // Exclude current user
+            if (doc.id !== user?.uid) {
+              allUsers.push({
+                id: doc.id,
+                name: data.name || data.email?.split('@')[0] || 'Unknown',
+                email: data.email || 'No email',
+                role: data.role || 'user',
+              });
+            }
+          });
+          setAvailableUsers(allUsers);
+          setLoading(false);
+        });
+
+        // Return cleanup function
+        return () => unsubscribe();
+      } else {
+        // Regular users see only accepted requests
+        if (userData.sentRequests) {
+          const acceptedRequests = Object.entries(userData.sentRequests)
+            .filter(([_, request]) => request.status === 'accepted');
+
+          for (const [userId, _] of acceptedRequests) {
+            const userDoc = await getDoc(doc(db, 'users', userId));
+            if (userDoc.exists()) {
+              const data = userDoc.data();
+              usersData.push({
+                id: userId,
+                name: data.name || data.email?.split('@')[0] || 'Unknown',
+                email: data.email || 'No email',
+                role: data.role || 'user',
+              });
+            }
+          }
+        }
+        setAvailableUsers(usersData);
+        setLoading(false);
+      }
     } catch (error) {
       console.error('Error fetching available users:', error);
       setError('Failed to load available users');
-    } finally {
       setLoading(false);
     }
   };
@@ -82,14 +108,16 @@ const UserImpersonationDropdown: React.FC = () => {
     setIsOpen(false);
   };
 
-  // Don't show if no accepted requests
-  if (!userData?.sentRequests || Object.keys(userData.sentRequests).length === 0) {
-    return null;
-  }
+  // Show for super-admins or users with accepted requests
+  if (userData?.role !== 'super-admin') {
+    if (!userData?.sentRequests || Object.keys(userData.sentRequests).length === 0) {
+      return null;
+    }
 
-  const hasAcceptedRequests = Object.values(userData.sentRequests).some(req => req.status === 'accepted');
-  if (!hasAcceptedRequests) {
-    return null;
+    const hasAcceptedRequests = Object.values(userData.sentRequests).some(req => req.status === 'accepted');
+    if (!hasAcceptedRequests) {
+      return null;
+    }
   }
 
   return (
@@ -141,14 +169,17 @@ const UserImpersonationDropdown: React.FC = () => {
               initial={{ opacity: 0, scale: 0.95, y: -10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: -10 }}
-              className="absolute right-0 mt-2 w-80 bg-white dark:bg-dark-200 border border-gray-200 dark:border-dark-100 rounded-lg shadow-lg z-50 max-h-96 overflow-hidden"
+              className="absolute right-0 mt-2 w-80 bg-white dark:bg-dark-200 border border-gray-200 dark:border-dark-100 rounded-lg shadow-lg z-50 max-h-[80vh] overflow-hidden flex flex-col"
             >
-              <div className="p-3 border-b border-gray-200 dark:border-dark-100">
+              <div className="p-3 border-b border-gray-200 dark:border-dark-100 flex-shrink-0">
                 <h3 className="text-sm font-medium text-gray-900 dark:text-white">
                   Select User to Switch Workspace
                 </h3>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  Switch to users who have accepted your requests
+                  {userData?.role === 'super-admin' 
+                    ? 'Switch to any user workspace' 
+                    : 'Switch to users who have accepted your requests'
+                  }
                 </p>
               </div>
 
@@ -170,7 +201,7 @@ const UserImpersonationDropdown: React.FC = () => {
                 </div>
               )}
 
-              <div className="max-h-64 overflow-y-auto">
+              <div className="flex-1 overflow-y-auto min-h-0">
                 {loading ? (
                   <div className="p-4 text-center">
                     <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mx-auto"></div>
@@ -192,18 +223,34 @@ const UserImpersonationDropdown: React.FC = () => {
                           <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
                             userOption.role === 'admin' 
                               ? 'bg-amber-100 dark:bg-amber-900/20' 
+                              : userOption.role === 'super-admin'
+                              ? 'bg-purple-100 dark:bg-purple-900/20'
                               : 'bg-blue-100 dark:bg-blue-900/20'
                           }`}>
                             <User className={`w-4 h-4 ${
                               userOption.role === 'admin' 
                                 ? 'text-amber-600 dark:text-amber-400' 
+                                : userOption.role === 'super-admin'
+                                ? 'text-purple-600 dark:text-purple-400'
                                 : 'text-blue-600 dark:text-blue-400'
                             }`} />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                              {userOption.name}
-                            </p>
+                            <div className="flex items-center space-x-2">
+                              <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                                {userOption.name}
+                              </p>
+                              {userOption.role === 'super-admin' && (
+                                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400">
+                                  Super Admin
+                                </span>
+                              )}
+                              {userOption.role === 'admin' && (
+                                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/20 dark:text-amber-400">
+                                  Admin
+                                </span>
+                              )}
+                            </div>
                             <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
                               {userOption.email}
                             </p>
