@@ -474,6 +474,17 @@ const UserManagement = () => {
                     </div>
 
                     <div className="flex items-center space-x-2">
+                      {/* Super Admin Switch User Button */}
+                      {userData?.role === 'super-admin' && userItem.id !== user.uid && (
+                        <button
+                          onClick={() => impersonateUser(userItem.id)}
+                          className="inline-flex items-center px-3 py-2 border border-blue-500 text-sm leading-4 font-medium rounded-md text-blue-500 bg-white dark:bg-dark-100 hover:bg-blue-500 hover:text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                        >
+                          <User className="w-4 h-4 mr-1" />
+                          Switch User
+                        </button>
+                      )}
+                      
                       {/* Send Request Button */}
                       {user && canSendRequest(userItem.id) && userData?.role !== 'super-admin' && (
                         <button
