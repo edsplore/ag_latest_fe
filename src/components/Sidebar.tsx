@@ -79,7 +79,7 @@ const Sidebar = () => {
       {/* HEADER / LOGO */}
       <div className="flex items-center h-14 px-4 border-b border-gray-100 dark:border-dark-100">
         <Link to="/" className="flex items-center space-x-2 group">
-          <div className="w-7 h-7 rounded-md bg-lime-100 dark:bg-lime-700/20 flex items-center justify-center group-hover:shadow-lg transition-all duration-300">
+          <div className="w-7 h-7 rounded-md bg-[#735CFF] flex items-center justify-center group-hover:shadow-lg transition-all duration-300">
             <img
               src="/circle-logo.png"
               alt="Allied Global"
@@ -92,8 +92,7 @@ const Sidebar = () => {
             <motion.span
               initial={false}
               animate={{ opacity: 1, width: "auto" }}
-              className="font-heading text-sm font-bold text-gray-800 dark:text-gray-200
-                         group-hover:text-lime-600 transition-colors duration-300 text-[15px]"
+              className="font-heading text-sm font-bold text-gray-800 dark:text-gray-200 group-hover:text-primary transition-colors duration-300 text-[15px]"
             >
               Allied Global
             </motion.span>
@@ -115,14 +114,14 @@ const Sidebar = () => {
                 className={cn(
                   "group flex items-center px-3 py-2 text-[14px] font-menu rounded-lg relative overflow-hidden transition-all duration-300",
                   isActive
-                    ? "text-lime-600 bg-lime-50 dark:bg-dark-100 dark:text-lime-400 font-semibold"
+                    ? "text-primary bg-primary/10 dark:bg-dark-100 dark:text-primary font-semibold"
                     : "text-gray-600 hover:text-gray-900 hover:bg-gray-50 dark:text-gray-400 dark:hover:text-white dark:hover:bg-dark-100",
                 )}
               >
                 {isActive && (
                   <motion.div
                     layoutId="activeIndicator"
-                    className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-lime-500 dark:bg-lime-600 rounded-r-full"
+                    className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-primary rounded-r-full"
                     initial={false}
                     transition={{
                       type: "spring",
@@ -224,13 +223,13 @@ const Sidebar = () => {
       {/*
         Small rectangular toggle at the center right
         - Now even smaller (h-7 px-1.5)
-        - Subtle border, single lime color accent
+        - Subtle border with brand accent
         - Arrow flips from left to right (0→180°)
       */}
       <div className="absolute top-1/2 right-0 -translate-y-1/2 translate-x-1/2">
         <motion.button
           onClick={() => setIsCollapsed(!isCollapsed)}
-          className="text-lime-600 dark:text-lime-400 hover:text-lime-700 dark:hover:text-lime-300 transition-colors"
+          className="text-primary hover:text-primary-600 transition-colors"
         >
           <motion.div
             animate={{ rotate: isCollapsed ? 180 : 0 }}

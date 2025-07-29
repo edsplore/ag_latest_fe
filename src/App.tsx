@@ -13,7 +13,7 @@ function App() {
   return (
     <AuthProvider>
       <Router>
-        <div className="min-h-screen bg-light dark:bg-dark-300 transition-colors duration-200">
+        <div className="min-h-screen bg-canvas transition-colors duration-200">
           <Routes>
             <Route 
               path="/" 

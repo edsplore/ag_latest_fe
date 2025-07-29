@@ -5,33 +5,30 @@ export default {
   theme: {
     extend: {
       fontSize: {
-        xs: "0.6875rem", // 11px
-        sm: "0.75rem", // 12px
-        base: "0.8125rem", // 13px
-        lg: "0.875rem", // 14px
-        xl: "1rem", // 16px
-        "2xl": "1.125rem", // 18px
-        "3xl": "1.25rem", // 20px
-        "4xl": "1.5rem", // 24px
+        xs: "0.75rem", // 12px
+        sm: "0.875rem", // 14px
+        base: "1rem", // 16px body text
+        lg: "1.125rem", // 18px
+        xl: "1.25rem", // 20px card titles
+        "2xl": "1.5rem", // 24px
+        "3xl": "2rem", // 32px h1
       },
       fontFamily: {
-        sans: ["Poppins", "system-ui", "sans-serif"],
-        heading: ["Noto Sans", "system-ui", "sans-serif"],
-        menu: ["Lato", "system-ui", "sans-serif"],
+        sans: ["Inter", "system-ui", "sans-serif"],
+        heading: ["Inter", "system-ui", "sans-serif"],
+        menu: ["Inter", "system-ui", "sans-serif"],
       },
       colors: {
         primary: {
-          DEFAULT: "#65a30d", // Lime-600 as default for better contrast
-          50: "#f7fee7",
-          100: "#ecfccb",
-          200: "#d9f99d",
-          300: "#bef264",
-          400: "#a3e635",
-          500: "#84cc16",
-          600: "#65a30d",
-          700: "#4d7c0f",
-          800: "#3f6212",
-          900: "#365314",
+          DEFAULT: "#1E82FF",
+          600: "#6A5CFF",
+        },
+        canvas: "#F6F8FA",
+        cardborder: "#E3E7EE",
+        accent: {
+          purple: "#735CFF",
+          teal: "#00C896",
+          orange: "#FF8F44",
         },
         dark: {
           DEFAULT: "#18181b",
