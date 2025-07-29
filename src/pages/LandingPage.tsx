@@ -208,8 +208,8 @@ export default function LandingPage() {
               <div className="relative">
                 <div className="h-10 px-2 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center group-hover:shadow-lg transition-all duration-300">
                   <img
-                    src="/XpressVoice-logo.png"
-                    alt="EchoMind"
+                    src="/full-logo.png"
+                    alt="Allied Global"
                     className="h-6 w-auto"
                   />
                 </div>
@@ -497,8 +497,8 @@ export default function LandingPage() {
                   <div className="absolute inset-0 bg-primary/40 rounded-full blur-3xl animate-pulse" />
                   <div className="absolute -inset-4 bg-primary/20 rounded-full blur-2xl" />
                   <img
-                    src="/XpressVoice-logo.png"
-                    alt="XpressVoice"
+                    src="/full-logo.png"
+                    alt="Allied Global"
                     className="relative w-auto h-full object-contain"
                   />
                 </div>
@@ -572,7 +572,7 @@ export default function LandingPage() {
             Ready to Get Started?
           </h2>
           <p className="text-lg text-gray-400 mb-6 font-lato">
-            Join thousands of businesses using XpressVoice to transform their
+            Join thousands of businesses using Allied Global to transform their
             customer interactions.
           </p>
           <motion.div

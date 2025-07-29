@@ -62,7 +62,7 @@ const Sidebar = () => {
 
     const receivedRequests = userData.receivedRequests || {};
     const pendingCount = Object.values(receivedRequests).filter(
-      (request: any) => request.status === 'pending'
+      (request: any) => request.status === "pending",
     ).length;
     setPendingRequestsCount(pendingCount);
   }, [userData]);
@@ -80,7 +80,11 @@ const Sidebar = () => {
       <div className="flex items-center h-14 px-4 border-b border-gray-100 dark:border-dark-100">
         <Link to="/" className="flex items-center space-x-2 group">
           <div className="w-7 h-7 rounded-md bg-lime-100 dark:bg-lime-700/20 flex items-center justify-center group-hover:shadow-lg transition-all duration-300">
-            <img src="/XpressVoice-circle-logo.png" alt="XpressVoice" className="w-4 h-4" />
+            <img
+              src="/circle-logo.png"
+              alt="Allied Global"
+              className="w-4 h-4"
+            />
           </div>
 
           {/* Hide text if collapsed */}
@@ -91,7 +95,7 @@ const Sidebar = () => {
               className="font-heading text-sm font-bold text-gray-800 dark:text-gray-200
                          group-hover:text-lime-600 transition-colors duration-300 text-[15px]"
             >
-              XpressVoice
+              Allied Global
             </motion.span>
           )}
         </Link>
@@ -138,11 +142,14 @@ const Sidebar = () => {
                   >
                     {item.label}
                     {/* Notification badge for User Management */}
-                    {item.path === '/dashboard/users' && pendingRequestsCount > 0 && (
-                      <span className="ml-2 inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-red-500 rounded-full">
-                        {pendingRequestsCount > 9 ? '9+' : pendingRequestsCount}
-                      </span>
-                    )}
+                    {item.path === "/dashboard/users" &&
+                      pendingRequestsCount > 0 && (
+                        <span className="ml-2 inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-red-500 rounded-full">
+                          {pendingRequestsCount > 9
+                            ? "9+"
+                            : pendingRequestsCount}
+                        </span>
+                      )}
                   </motion.span>
                 )}
 
@@ -154,18 +161,23 @@ const Sidebar = () => {
                                transition-all duration-200 whitespace-nowrap z-50"
                   >
                     {item.label}
-                    {item.path === '/dashboard/users' && pendingRequestsCount > 0 && (
-                      <span className="ml-1 text-red-400">({pendingRequestsCount})</span>
-                    )}
+                    {item.path === "/dashboard/users" &&
+                      pendingRequestsCount > 0 && (
+                        <span className="ml-1 text-red-400">
+                          ({pendingRequestsCount})
+                        </span>
+                      )}
                   </div>
                 )}
 
                 {/* Notification badge for collapsed state */}
-                {isCollapsed && item.path === '/dashboard/users' && pendingRequestsCount > 0 && (
-                  <span className="absolute -top-1 -right-1 inline-flex items-center justify-center w-4 h-4 text-xs font-bold text-white bg-red-500 rounded-full">
-                    {pendingRequestsCount > 9 ? '9+' : pendingRequestsCount}
-                  </span>
-                )}
+                {isCollapsed &&
+                  item.path === "/dashboard/users" &&
+                  pendingRequestsCount > 0 && (
+                    <span className="absolute -top-1 -right-1 inline-flex items-center justify-center w-4 h-4 text-xs font-bold text-white bg-red-500 rounded-full">
+                      {pendingRequestsCount > 9 ? "9+" : pendingRequestsCount}
+                    </span>
+                  )}
               </Link>
             );
           })}

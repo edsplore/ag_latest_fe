@@ -70,14 +70,14 @@ const Signup = () => {
           className="flex items-center justify-center space-x-2 group"
         >
           <div className="w-auto px-2 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 dark:from-primary/30 dark:to-primary/20 flex items-center justify-center group-hover:shadow-lg group-hover:shadow-primary/20 transition-all duration-300">
-            <img src="/XpressVoice-logo.png" alt="XpressVoice" className="w-auto h-6" />
+            <img src="/full-logo.png" alt="Allied Global" className="w-auto h-6" />
           </div>
         </Link>
         <h2 className="mt-6 text-center text-2xl font-heading font-bold text-white">
           Create your account
         </h2>
         <p className="mt-2 text-center text-sm text-gray-400">
-          Start your journey with XpressVoice
+          Start your journey with Allied Global
         </p>
       </motion.div>
 

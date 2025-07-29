@@ -45,8 +45,8 @@ const Navbar = () => {
             className="flex items-center"
           >
             <Link to="/" className="flex items-center space-x-2">
-              <img src="/XpressVoice-logo.png" alt="XpressVoice" className="w-8 h-8" />
-              <span className="text-xl font-display font-bold text-black">XpressVoice</span>
+              <img src="/full-logo.png" alt="Allied Global" className="w-8 h-8" />
+              <span className="text-xl font-display font-bold text-black">Allied Global</span>
             </Link>
           </motion.div>
 
