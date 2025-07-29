@@ -728,7 +728,7 @@ const Agents = () => {
                               colorClasses[color]
                             } dark:from-opacity-30 dark:to-opacity-20 flex items-center justify-center`}
                           >
-                            <Icon className="w-6 h-6 text-lime-500 dark:text-lime-500" />
+                            <Icon className="w-6 h-6 text-primary" />
                           </div>
                         </div>
                         <div>
